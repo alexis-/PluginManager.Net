@@ -1,0 +1,29 @@
+﻿<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <version>0.0.0.0</version>
+    <authors>Alexis</authors>
+    <owners>inco</owners>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/alexis-/PluginManager</projectUrl>
+
+    <id>PluginManager.Interop</id>
+    <title>PluginManager.NET Interop</title>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>PluginManager - PluginHost interop library.</description>
+    <copyright></copyright>
+	
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System.Runtime.Remoting" />
+      <frameworkAssembly assemblyName="System.Xml" />
+    </frameworkAssemblies>
+
+    <dependencies>
+      <group targetFramework="net472">
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="PluginManager.Interop.dll" target="lib\net472" />
+  </files>
+</package>

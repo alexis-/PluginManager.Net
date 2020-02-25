@@ -1,0 +1,55 @@
+﻿<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <version>0.0.0.0</version>
+    <authors>Alexis</authors>
+    <owners>inco</owners>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/alexis-/PluginManager</projectUrl>
+
+    <id>PluginManager.Core</id>
+    <title>PluginManager.NET</title>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A plugin manager for .NET projects</description>
+    <copyright></copyright>
+	
+    <tags>Plugin Manager PluginManager</tags>
+	
+    <frameworkAssemblies>
+      <frameworkAssembly targetFramework="net472" assemblyName="Microsoft.CSharp" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.ComponentModel.Composition" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Data" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.IdentityModel" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.IO.Compression" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Net.Http" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Numerics" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Runtime.Remoting" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Security" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.ServiceModel" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Xml" />
+      <frameworkAssembly targetFramework="net472" assemblyName="System.Xml.Linq" />
+    </frameworkAssemblies>
+	
+    <dependencies>
+      <group targetFramework="net472">
+        <dependency id="PluginManager.Interop" version="0.2.1.5" />
+        <dependency id="PluginManager.PluginHost" version="0.2.1.2" />
+        <dependency id="CommandLineParser" version="2.7.82" />
+        <dependency id="Extensions.System.IO" version="0.1.0.2" />
+        <dependency id="Microsoft.Web.Xdt" version="3.0.0" />
+        <dependency id="Newtonsoft.Json" version="12.0.3" />
+        <dependency id="Nito.AsyncEx" version="5.0.0" />
+        <dependency id="Nito.Disposables" version="2.0.1" />
+        <dependency id="NuGet.PackageManagement" version="5.4.0" />
+        <dependency id="NuGet.Packaging.Core" version="5.4.0" />
+        <dependency id="System.Buffers" version="4.5.0" />
+        <dependency id="System.Collections.Immutable" version="1.7.0" />
+        <dependency id="System.Numerics.Vectors" version="4.5.0" />
+        <dependency id="System.Runtime.CompilerServices.Unsafe" version="4.7.0" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="PluginManager.Core.dll" target="lib\net472" />
+  </files>
+</package>

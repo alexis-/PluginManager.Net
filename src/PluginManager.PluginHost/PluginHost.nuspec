@@ -1,0 +1,29 @@
+﻿<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <version>0.0.0.0</version>
+    <authors>Alexis</authors>
+    <owners>inco</owners>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/alexis-/PluginManager</projectUrl>
+
+    <id>PluginManager.PluginHost</id>
+    <title>PluginManager.NET Plugin Host</title>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Plugin Host executable.</description>
+    <copyright></copyright>
+    
+    <contentFiles>
+      <files include="**" buildAction="Content" copyToOutput="true" />
+    </contentFiles>
+
+    <dependencies>
+      <group targetFramework="net472">
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="PluginHost.exe" target="content\net472" />
+    <file src="..\..\install.ps1" target="tools\install.ps1" />
+  </files>
+</package>

@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" InitialTargets="MSBuildToolsReadSuo">
+  <Import Project="..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props" Condition="Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{672B6686-C60D-4358-8EC2-A340E5319FF2}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>PluginManager.Interop</RootNamespace>
+    <AssemblyName>PluginManager.Interop</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>full</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <LangVersion>latest</LangVersion>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Remoting">
+      <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\System.Runtime.Remoting.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Contracts\IPluginBase.cs" />
+    <Compile Include="Contracts\IPluginManager.cs" />
+    <Compile Include="Extensions\AssemblyEx.cs" />
+    <Compile Include="Extensions\RemotingServicesEx.cs" />
+    <Compile Include="PluginHost\PluginHostBase.Assembly.cs" />
+    <Compile Include="PluginHost\PluginHostBase.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Plugins\PluginBase.cs" />
+    <Compile Include="Sys\PerpetualMarshalByRefObject.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="PluginManager.Interop.nuspec" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="..\PluginManager.Shared\PluginManager.Shared.projitems" Label="Shared" />
+  <Target Name="NuPack" AfterTargets="Build" Condition=" $(RunNuPack) == 'True' ">
+    <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+      <Output TaskParameter="Assemblies" ItemName="myAssemblyInfo" />
+    </GetAssemblyIdentity>
+    <ItemGroup>
+      <!-- If your .NET version is <3.5 and you get build error, move this ItemGroup outside of Target -->
+      <NuGetExe Include="$(SolutionDir)tools\nuget.exe" />
+      <VersionNumber Include="@(myAssemblyInfo->'%(Version)')" />
+    </ItemGroup>
+    <Exec Command="&quot;%(NuGetExe.FullPath)&quot; pack $(AssemblyName).nuspec -Version @(VersionNumber) -Properties Configuration=$(Configuration) -OutputDirectory $(SolutionDir)Releases -BasePath $(OutDir)" />
+  </Target>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets'))" />
+  </Target>
+  <Import Project="..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets" Condition="Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets')" />
+</Project>

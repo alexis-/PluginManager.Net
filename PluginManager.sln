@@ -1,0 +1,74 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29806.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginManager.Core", "src\PluginManager.Core\PluginManager.Core.csproj", "{78920D38-92CC-49B3-B82F-92AACC504A5B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginManager.Interop", "src\PluginManager.Interop\PluginManager.Interop.csproj", "{672B6686-C60D-4358-8EC2-A340E5319FF2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginManager.PluginHost", "src\PluginManager.PluginHost\PluginManager.PluginHost.csproj", "{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "PluginManager.Shared", "src\PluginManager.Shared\PluginManager.Shared.shproj", "{234E6980-1C32-4C14-AEE0-282D002387E0}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "PluginManager.Shared.MgrHost", "src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.shproj", "{4FB8AEB7-3984-42B9-BFA6-90B64D448730}"
+EndProject
+Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{149c5a9b-0588-41b9-8f77-c5d17a1cdfbe}*SharedItemsImports = 4
+		src\PluginManager.Shared\PluginManager.Shared.projitems*{149c5a9b-0588-41b9-8f77-c5d17a1cdfbe}*SharedItemsImports = 4
+		src\PluginManager.Shared\PluginManager.Shared.projitems*{234e6980-1c32-4c14-aee0-282d002387e0}*SharedItemsImports = 13
+		src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{4fb8aeb7-3984-42b9-bfa6-90b64d448730}*SharedItemsImports = 13
+		src\PluginManager.Shared\PluginManager.Shared.projitems*{672b6686-c60d-4358-8ec2-a340e5319ff2}*SharedItemsImports = 4
+		src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{78920d38-92cc-49b3-b82f-92aacc504a5b}*SharedItemsImports = 4
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		NuPackDebug|Any CPU = NuPackDebug|Any CPU
+		NuPackRelease|Any CPU = NuPackRelease|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.NuPackDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.NuPackDebug|Any CPU.Build.0 = Debug|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.NuPackRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.NuPackRelease|Any CPU.Build.0 = Release|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78920D38-92CC-49B3-B82F-92AACC504A5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.NuPackDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.NuPackDebug|Any CPU.Build.0 = Debug|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.NuPackRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.NuPackRelease|Any CPU.Build.0 = Release|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{672B6686-C60D-4358-8EC2-A340E5319FF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.NuPackDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.NuPackDebug|Any CPU.Build.0 = Debug|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.NuPackRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.NuPackRelease|Any CPU.Build.0 = Release|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AB0B1F96-F16A-4A76-AC70-ED5D13D463D3}
+	EndGlobalSection
+	GlobalSection(AutomaticVersions) = postSolution
+		UpdateAssemblyVersion = True
+		UpdateAssemblyFileVersion = True
+		UpdateAssemblyInfoVersion = True
+		AssemblyVersionSettings = IncrementOnDemand.IncrementOnDemand.IncrementOnDemand.IncrementWithResetOnIncrease
+		AssemblyFileVersionSettings = IncrementOnDemand.IncrementOnDemand.IncrementOnDemand.IncrementWithResetOnIncrease
+		AssemblyInfoVersionSettings = IncrementOnDemand.IncrementOnDemand.IncrementOnDemand.IncrementWithResetOnIncrease
+		UpdatePackageVersion = False
+		AssemblyInfoVersionType = SettingsVersion
+		InheritWinAppVersionFrom = None
+	EndGlobalSection
+EndGlobal
