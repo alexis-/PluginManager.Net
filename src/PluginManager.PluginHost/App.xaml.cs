@@ -57,7 +57,7 @@ namespace PluginHost
 
     protected override void OnExit(ExitEventArgs e)
     {
-      _pluginHost.Dispose();
+      _pluginHost?.Dispose();
 
       base.OnExit(e);
     }
@@ -111,6 +111,8 @@ namespace PluginHost
       }
 
       _pluginHost = PluginLoader.Create(
+        args.PackageRootFolder,
+        args.PluginAndDependenciesAssembliesPath,
         args.PluginHostTypeAssemblyName,
         args.PluginHostTypeQualifiedName,
         args.PackageName,

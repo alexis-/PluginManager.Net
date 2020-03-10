@@ -54,28 +54,21 @@ namespace PluginManager.Interop.PluginHost
     #region Methods
 
     private IPluginBase LoadAssembliesAndCreatePluginInstance(
-      IEnumerable<string> dependenciesAssembliesPaths,
-      IEnumerable<string> pluginAssembliesPaths)
+      string pluginEntryAssembly)
     {
-      foreach (var assemblyPath in dependenciesAssembliesPaths)
-        Assembly.LoadFrom(assemblyPath);
+      var pluginAssembly = Assembly.LoadFrom(pluginEntryAssembly);
 
-      return CreatePluginInstance(pluginAssembliesPaths.Select(Assembly.LoadFrom));
+      return CreatePluginInstance(pluginAssembly);
     }
 
-    private IPluginBase CreatePluginInstance(IEnumerable<Assembly> pluginAssemblies)
+    private IPluginBase CreatePluginInstance(Assembly pluginAssembly)
     {
-      foreach (var pluginAssembly in pluginAssemblies)
-      {
-        Type pluginType = FindPluginType(pluginAssembly);
+      Type pluginType = FindPluginType(pluginAssembly);
 
-        if (pluginType == null)
-          continue;
+      if (pluginType == null)
+        return null;
 
-        return (IPluginBase)Activator.CreateInstance(pluginType);
-      }
-
-      return null;
+      return (IPluginBase)Activator.CreateInstance(pluginType);
     }
 
     private Type FindPluginType(Assembly pluginAssembly)
@@ -85,11 +78,11 @@ namespace PluginManager.Interop.PluginHost
       return exportedTypes.FirstOrDefault(t => t.IsAbstract == false && t.GetInterface(PluginInterfaceFullName) != null);
     }
 
-    public bool InjectPropertyDependencies(IPluginBase           plugin,
-                                           ICore                 coreInst,
-                                           IPluginManager<ICore> pluginMgr,
-                                           Guid                  sessionGuid,
-                                           bool                  isDevelopment)
+    private bool InjectPropertyDependencies(IPluginBase           plugin,
+                                            ICore                 coreInst,
+                                            IPluginManager<ICore> pluginMgr,
+                                            Guid                  sessionGuid,
+                                            bool                  isDevelopment)
     {
       bool coreSet = false;
       bool mgrSet  = false;
@@ -130,7 +123,7 @@ namespace PluginManager.Interop.PluginHost
       return coreSet && mgrSet && guidSet;
     }
 
-    private Assembly AssemblyResolve(object sender, ResolveEventArgs e)
+    private Assembly DevelopmentPluginAssemblyResolver(object sender, ResolveEventArgs e)
     {
       var assembly = AppDomain.CurrentDomain
                               .GetAssemblies()

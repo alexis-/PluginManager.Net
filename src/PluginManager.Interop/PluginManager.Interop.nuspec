@@ -25,5 +25,7 @@
   </metadata>
   <files>
     <file src="PluginManager.Interop.dll" target="lib\net472" />
+    <file src="PluginManager.Interop.xml" target="lib\net472" />
+    <file src="PluginManager.Interop.pdb" target="lib\net472" />
   </files>
 </package>

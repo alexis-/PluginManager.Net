@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 17:25
+// Modified On:  2020/03/04 14:40
 // Modified By:  Alexis
 
 #endregion
@@ -43,6 +43,12 @@ using PluginManager.PackageManager.NuGet;
 
 namespace PluginManager.PackageManager.Models
 {
+  /// <summary>
+  ///   Represents a local development plugin. Unlike
+  ///   <see cref="LocalPluginPackage{TMeta}" /> this plugin isn't in the form of a NuGet package
+  ///   and all its files are located under a single folder
+  /// </summary>
+  /// <typeparam name="TMeta">The metadata to associate with each plugin</typeparam>
   public class LocalDevPluginPackage<TMeta> : LocalPluginPackage<TMeta>
   {
     #region Constructors
@@ -51,6 +57,16 @@ namespace PluginManager.PackageManager.Models
                                     DirectoryPath   devDir,
                                     TMeta           metadata)
       : base(identity, devDir, metadata) { }
+
+    #endregion
+
+
+
+
+    #region Properties Impl - Public
+    
+    /// <inheritdoc />
+    public override bool HasPendingUpdates => false;
 
     #endregion
 

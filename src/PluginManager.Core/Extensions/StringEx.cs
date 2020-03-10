@@ -50,6 +50,15 @@ namespace PluginManager.Extensions
       }
     }
 
+    public static string After(this string str, string separator)
+    {
+      var idx = str.IndexOf(separator, StringComparison.Ordinal);
+
+      return idx >= 0
+        ? str.Substring(idx + separator.Length)
+        : null;
+    }
+
     #endregion
   }
 }

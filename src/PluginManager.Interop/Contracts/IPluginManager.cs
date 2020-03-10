@@ -34,30 +34,17 @@ using System.Collections.Generic;
 
 namespace PluginManager.Interop.Contracts
 {
+  /// <summary>
+  /// The plugin manager interface to publish as a remote service. This is used by PluginHost.exe to register its guest plugin with the Plugin Manager.
+  /// </summary>
+  /// <typeparam name="ICore">The type of the final service that needs to be published</typeparam>
   public interface IPluginManager<out ICore>
   {
-    /// <summary>
-    ///   Request a list of assemblies to load plugin <paramref name="sessionGuid" /> and its
-    ///   dependencies.
-    /// </summary>
-    /// <param name="sessionGuid"></param>
-    /// <param name="pluginAssemblies">
-    ///   The list of paths representing plugin's referenced assemblies,
-    ///   or null.
-    /// </param>
-    /// <param name="dependenciesAssemblies">
-    ///   The list of paths representing plugin's dependencies
-    ///   referenced assemblies, or null.
-    /// </param>
-    /// <returns><see langword="true" /> if successful, <see langword="false" /> otherwise</returns>
-    bool GetAssembliesPathsForPlugin(Guid                    sessionGuid,
-                                     out IEnumerable<string> pluginAssemblies,
-                                     out IEnumerable<string> dependenciesAssemblies);
-
     /// <summary>Registers a newly started plugin process with the Plugin Manager</summary>
     /// <param name="channel"></param>
     /// <param name="sessionGuid"></param>
     /// <returns>An instance of <see cref="ICore" /> if successful, <see langword="null" /> otherwise</returns>
+    /// <exception cref="ArgumentNullException"></exception>
     ICore ConnectPlugin(string channel,
                         Guid   sessionGuid);
 
@@ -67,6 +54,7 @@ namespace PluginManager.Interop.Contracts
     /// </summary>
     /// <param name="remoteInterfaceType"></param>
     /// <returns>The channel name if successful, <see langword="null" /> otherwise.</returns>
+    /// <exception cref="ArgumentNullException"></exception>
     string GetService(string remoteInterfaceType);
 
     /// <summary>
@@ -83,6 +71,8 @@ namespace PluginManager.Interop.Contracts
     ///   A disposable object, which unregisters the channel when disposed, or
     ///   <see langword="null" />.
     /// </returns>
+    /// <exception cref="ArgumentNullException"></exception>
+    /// <exception cref="ArgumentException">No plugin found for <paramref name="sessionGuid"/></exception>
     IDisposable RegisterService(Guid   sessionGuid,
                                 string remoteServiceType,
                                 string channelName);

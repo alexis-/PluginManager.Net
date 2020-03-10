@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/23 02:56
+// Modified On:  2020/03/04 14:30
 // Modified By:  Alexis
 
 #endregion
@@ -29,10 +29,17 @@
 
 
 
+#pragma warning disable 1591
+
+
 using System;
 
 namespace PluginManager.Logger
 {
+  /// <summary>
+  ///   Contract interface that is used to forward the PluginManager's library logs to the
+  ///   user's PluginManager implementation.
+  /// </summary>
   public interface ILogAdapter
   {
     bool IsTraceEnabled       { get; }

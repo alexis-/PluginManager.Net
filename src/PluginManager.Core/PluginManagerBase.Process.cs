@@ -30,12 +30,15 @@
 
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.Remoting;
 using System.Text;
 using System.Threading.Tasks;
 using Anotar.Custom;
 using CommandLine;
+using Extensions.System.IO;
 using PluginManager.Extensions;
 using PluginManager.Models;
 using PluginManager.PluginHost;
@@ -62,6 +65,11 @@ namespace PluginManager
 
     #region Methods
 
+    /// <summary>
+    /// Start plugin <paramref name="pluginInstance"/>
+    /// </summary>
+    /// <param name="pluginInstance">The plugin to start</param>
+    /// <returns>Success of operation</returns>
     public async Task<bool> StartPlugin(TPluginInstance pluginInstance)
     {
       var pluginPackage = pluginInstance.Package;
@@ -80,18 +88,65 @@ namespace PluginManager
 
           OnPluginStarting(pluginInstance);
         }
+        
+        // Determine the plugin and its dependencies assemblies' information. This includes the assembly which contains the PluginHost type
+        string packageRootFolder = Locations.PluginPackageDir.FullPathWin;
+        List<string> pluginAndDependenciesAssembliesPath = new List<string>();
+        string pluginHostTypeAssemblyName = GetPluginHostTypeAssemblyName(pluginInstance);
+        
+        if (pluginInstance.IsDevelopment == false)
+        {
+          using (await PMLock.ReaderLockAsync())
+          {
+            List<FilePath> pluginAndDependenciesPackageFilePaths = new List<FilePath>();
+            var pluginPkg = PackageManager.FindInstalledPluginById(packageName);
+
+            if (pluginPkg == null)
+              throw new InvalidOperationException($"Cannot find requested plugin package {packageName}");
+
+            PackageManager.GetInstalledPluginAssembliesFilePath(
+              pluginPkg.Identity,
+              out var tmpPluginAssemblies,
+              out var tmpDependenciesAssemblies);
+
+            pluginAndDependenciesPackageFilePaths.AddRange(tmpPluginAssemblies);
+            pluginAndDependenciesPackageFilePaths.AddRange(tmpDependenciesAssemblies);
+
+            if (pluginAndDependenciesPackageFilePaths.Any(a => a.FileNameWithoutExtension == pluginHostTypeAssemblyName) == false)
+            {
+              LogTo.Warning($"Unable to find the PluginHost type's \"{pluginHostTypeAssemblyName}\" dependency assembly's package");
+              return false;
+            }
+
+            foreach (var pkgFilePath in pluginAndDependenciesPackageFilePaths)
+            {
+              string pkgRelativeFilePath = pkgFilePath.FullPathWin.After(packageRootFolder);
+
+              if (string.IsNullOrWhiteSpace(pkgRelativeFilePath))
+              {
+                LogTo.Warning(
+                  $"Package {pkgFilePath} isn't located underneath the package folder {packageRootFolder}. Skipping, this might cause issues with the plugin");
+                continue;
+              }
+
+              pluginAndDependenciesAssembliesPath.Add(pkgRelativeFilePath);
+            }
+          }
+        }
 
         // Build command line
         var cmdLineParams = new PluginHostParameters
         {
-          PluginHostTypeAssemblyName  = GetPluginHostTypeAssemblyName(pluginInstance),
-          PluginHostTypeQualifiedName = GetPluginHostTypeQualifiedName(pluginInstance),
-          PackageName                 = packageName,
-          HomePath                    = pluginPackage.HomeDir.FullPath,
-          SessionString               = pluginInstance.Guid.ToString(),
-          ChannelName                 = IpcServerChannelName,
-          ManagerProcessId            = Process.GetCurrentProcess().Id,
-          IsDevelopment               = pluginInstance.IsDevelopment,
+          PackageRootFolder             = packageRootFolder,
+          PluginAndDependenciesAssembliesPath = string.Join(";", pluginAndDependenciesAssembliesPath),
+          PluginHostTypeAssemblyName    = pluginHostTypeAssemblyName,
+          PluginHostTypeQualifiedName   = GetPluginHostTypeQualifiedName(pluginInstance),
+          PackageName                   = packageName,
+          HomePath                      = pluginPackage.HomeDir.FullPath,
+          SessionString                 = pluginInstance.Guid.ToString(),
+          ChannelName                   = IpcServerChannelName,
+          ManagerProcessId              = Process.GetCurrentProcess().Id,
+          IsDevelopment                 = pluginInstance.IsDevelopment,
         };
 
         // Build process parameters
@@ -148,12 +203,17 @@ namespace PluginManager
           return false;
         }
 
+        OnPluginStarted(pluginInstance);
+
         pluginInstance.Process.EnableRaisingEvents = true;
         pluginInstance.Process.BeginErrorReadLine();
-        pluginInstance.Process.Exited += async (o, e) =>
+        pluginInstance.Process.Exited += (o, e) =>
         {
-          using (await pluginInstance.Lock.LockAsync())
-            OnPluginStopped(pluginInstance);
+          UISynchronizationContext.Post(_ =>
+          {
+            using (pluginInstance.Lock.Lock())
+              OnPluginStopped(pluginInstance);
+          }, null);
         };
 
         if (await pluginInstance.ConnectedEvent.WaitAsync(PluginConnectTimeout))
@@ -197,8 +257,15 @@ namespace PluginManager
       }
       finally
       {
-        using (await pluginInstance.Lock.LockAsync())
-          OnPluginStopped(pluginInstance);
+        try
+        {
+          using (await pluginInstance.Lock.LockAsync())
+            OnPluginStopped(pluginInstance);
+        }
+        catch (Exception ex)
+        {
+          LogTo.Error(ex, "Exception thrown while calling OnPluginStopped");
+        }
       }
 
       return false;
@@ -271,7 +338,14 @@ namespace PluginManager
       finally
       {
         using (await pluginInstance.Lock.LockAsync())
-          OnPluginStopped(pluginInstance);
+          try
+          {
+            OnPluginStopped(pluginInstance);
+          }
+          catch (Exception ex)
+          {
+            LogTo.Error(ex, "Exception thrown while calling OnPluginStopped");
+          }
       }
 
       return false;

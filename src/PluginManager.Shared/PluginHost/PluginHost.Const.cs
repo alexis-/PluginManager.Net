@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 00:59
+// Modified On:  2020/03/05 16:02
 // Modified By:  Alexis
 
 #endregion
@@ -35,16 +35,22 @@ namespace PluginHost
   {
     #region Constants & Statics
 
-    public const int ExitUnknownError               = -1;
-    public const int ExitParameters                 = 1;
-    public const int ExitParentExited               = 2;
-    public const int ExitIpcConnectionError         = 3;
-    public const int ExitCouldNotGetAssembliesPaths = 4;
-    public const int ExitNoPluginTypeFound          = 5;
-    public const int ExitCouldNotConnectPlugin      = 6;
+    public const int ExitUnknownError                = -1;
+    public const int ExitParameters                  = 1;
+    public const int ExitParentExited                = 2;
+    public const int ExitIpcConnectionError          = 3;
+    public const int ExitCouldNotGetAssembliesPaths  = 4;
+    public const int ExitNoPluginTypeFound           = 5;
+    public const int ExitCouldNotConnectPlugin       = 6;
+    public const int ExitCouldNotFindInteropAssembly = 7;
+    public const int ExitCouldNotFindPluginAssembly  = 8;
 
+    public const string PluginAndDependenciesAssembliesSeparator = ";";
 
     public const string AppDomainName = "PluginsHost_AppDomain";
+
+    public const string PluginManagerInteropAssemblyName         = "PluginManager.Interop";
+    public const string PluginManagerInteropAssemblyResolverType = "PluginManager.Interop.PluginHost.PluginAssemblyResolver";
 
     #endregion
   }

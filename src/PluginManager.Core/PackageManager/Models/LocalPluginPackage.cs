@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 17:21
+// Modified On:  2020/03/04 14:49
 // Modified By:  Alexis
 
 #endregion
@@ -40,26 +40,38 @@ using NuGet.PackageManagement;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
+using NuGet.Versioning;
 using PluginManager.Extensions;
 using PluginManager.PackageManager.NuGet;
+using PluginManager.Sys.Converters;
 
 // ReSharper disable PossibleMultipleEnumeration
 
 namespace PluginManager.PackageManager.Models
 {
+  /// <summary>
+  ///   Represents a locally installed plugin package, as opposed to
+  ///   <see cref="OnlinePluginPackage{TMeta}" /> and the plugin's NuGet dependency packages.
+  /// </summary>
+  /// <typeparam name="TMeta">The metadata to associate with each plugin</typeparam>
   [JsonObject(MemberSerialization.OptIn)]
   public class LocalPluginPackage<TMeta> : PluginPackage<TMeta>, IEquatable<LocalPluginPackage<TMeta>>
   {
     #region Constructors
 
+    /// <inheritdoc />
     public LocalPluginPackage() { }
 
+    /// <summary></summary>
+    /// <param name="identity"></param>
+    /// <param name="rootHomeDir"></param>
+    /// <param name="metadata"></param>
     public LocalPluginPackage(PackageIdentity identity,
-                              DirectoryPath   homeDir,
+                              DirectoryPath   rootHomeDir,
                               TMeta           metadata)
       : base(identity, metadata)
     {
-      HomeDir = homeDir.Combine(Id);
+      HomeDir = rootHomeDir.Combine(Id);
     }
 
     #endregion
@@ -69,12 +81,24 @@ namespace PluginManager.PackageManager.Models
 
     #region Properties & Fields - Public
 
+    /// <summary>All the <see cref="NuGetPackage" /> that this plugin depends on to run its program</summary>
     [JsonProperty]
-    public HashSet<NuGetPackage> Dependencies { get; private set; } = new HashSet<NuGetPackage>();
+    public Dictionary<PackageIdentity, NuGetPackage> Dependencies { get; private set; } = new Dictionary<PackageIdentity, NuGetPackage>();
 
-    public IEnumerable<NuGetPackage> PluginAndDependencies => new List<NuGetPackage> { this }.Concat(Dependencies);
+    /// <summary>
+    ///   All the <see cref="NuGetPackage" /> that this plugin depends on to run its program,
+    ///   and the plugin's package itself
+    /// </summary>
+    public IEnumerable<NuGetPackage> PluginAndDependencies => new List<NuGetPackage> { this }.Concat(Dependencies.Values);
 
-    public virtual DirectoryPath HomeDir { get; }
+    /// <summary>
+    ///   The home folder for this plugin, where it may create and store files needed when
+    ///   executing its program. This folder also contains a copy of the content folder bundled in the
+    ///   plugin's NuGet package
+    /// </summary>
+    [JsonProperty]
+    [JsonConverter(typeof(DirectoryPathConverter))]
+    public virtual DirectoryPath HomeDir { get; private set; }
 
     #endregion
 
@@ -124,36 +148,35 @@ namespace PluginManager.PackageManager.Models
 
     #region Methods
 
-    public virtual void SetOnlineVersions(IEnumerable<IPackageSearchMetadata> srl)
-    {
-      OnlineVersions = srl.Select(sr => sr.Identity.Version);
-    }
-
+    /// <summary>
+    /// Adds a <see cref="NuGetPackage" /> dependency on which this plugin depends
+    /// </summary>
+    /// <param name="packageIdentity">The dependency package's identity</param>
+    /// <returns>The created <see cref="NuGetPackage"/></returns>
     public virtual NuGetPackage AddDependency(PackageIdentity packageIdentity)
     {
       var dependency = new NuGetPackage(packageIdentity);
 
-      Dependencies.Add(dependency);
+      Dependencies[packageIdentity] = dependency;
 
       return dependency;
     }
-
+    
+    /// <summary>
+    /// Removes the <paramref name="packageIdentity"/> dependency on which this plugin depends
+    /// </summary>
+    /// <param name="packageIdentity">The dependency package's identity</param>
+    /// <returns>The removed <see cref="NuGetPackage"/></returns>
     public virtual NuGetPackage RemoveDependency(PackageIdentity packageIdentity)
     {
-      NuGetPackage dependency = null;
-
-      Dependencies.RemoveWhere(p =>
+      if (Dependencies.TryGetValue(packageIdentity, out var dependency))
       {
-        if (Equals(p.Identity, packageIdentity))
-        {
-          dependency = p;
-          return true;
-        }
+        Dependencies.Remove(packageIdentity);
 
-        return false;
-      });
+        return dependency;
+      }
 
-      return dependency;
+      return null;
     }
 
     public virtual IEnumerable<FilePath> GetPluginAndDependenciesAssembliesFilePaths(FolderNuGetProject project,
@@ -181,7 +204,7 @@ namespace PluginManager.PackageManager.Models
       }
 
       // Check dependencies
-      foreach (var package in Dependencies)
+      foreach (var package in Dependencies.Values)
         if (!package.PackageExists(packageManager))
         {
           LogTo.Warning(

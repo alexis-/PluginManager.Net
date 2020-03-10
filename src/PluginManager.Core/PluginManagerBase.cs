@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 00:38
+// Modified On:  2020/02/27 00:05
 // Modified By:  Alexis
 
 #endregion
@@ -48,6 +48,26 @@ using PluginManager.PackageManager.NuGet;
 
 namespace PluginManager
 {
+  /// <summary>
+  ///   The main class for dealing with plugins. Inherit this class to implement
+  ///   PluginManager.NET in your project.
+  /// </summary>
+  /// <typeparam name="TParent">
+  ///   The latest child in the inheritance hierarchy of
+  ///   <see
+  ///     cref="PluginManagerBase{TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin}" />
+  /// </typeparam>
+  /// <typeparam name="TPluginInstance">Represents an instance of a local plugin in-memory</typeparam>
+  /// <typeparam name="TMeta">The container for the metadata associated with plugin</typeparam>
+  /// <typeparam name="ICustomPluginManager">
+  ///   The plugin manager interface to publish as a remote
+  ///   service. Use <see cref="IPluginManager{ICore}" /> for default behaviour
+  /// </typeparam>
+  /// <typeparam name="ICore">The actual service that needs to be published as a remote service</typeparam>
+  /// <typeparam name="IPlugin">
+  ///   The plugin interface that plugins publish as a remote service. Use
+  ///   <see cref="IPluginBase" /> for default behaviour
+  /// </typeparam>
   public abstract partial class PluginManagerBase<TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin>
     : PerpetualMarshalByRefObject, IPluginManager<ICore>, IDisposable
     where TParent : PluginManagerBase<TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin>, ICustomPluginManager
@@ -58,9 +78,11 @@ namespace PluginManager
   {
     #region Properties & Fields - Non-Public
 
-    protected readonly ObservableCollection<TPluginInstance>       _allPlugins;
-    protected readonly ConcurrentDictionary<string, string>        _interfaceChannelMap;
-    protected readonly ConcurrentDictionary<Guid, TPluginInstance> _runningPluginMap;
+    protected ObservableCollection<TPluginInstance>       AllPluginsInternal  { get; }
+    protected ConcurrentDictionary<string, string>        InterfaceChannelMap { get; }
+    protected ConcurrentDictionary<Guid, TPluginInstance> RunningPluginMap    { get; }
+
+    protected bool IsDisposed { get; private set; }
 
     #endregion
 
@@ -69,21 +91,24 @@ namespace PluginManager
 
     #region Constructors
 
-    protected PluginManagerBase(ILogAdapter logger)
+    /// <summary>
+    ///   Creates the PluginManagerBase instance. There should only be one instance at all
+    ///   times.
+    /// </summary>
+    protected PluginManagerBase()
     {
-      PluginManagerLogger.UserLogger = logger ?? throw new ArgumentNullException(nameof(logger));
+      PluginManagerLogger.UserLogger = LogAdapter ?? throw new NullReferenceException(nameof(LogAdapter));
 
-      _allPlugins          = new ObservableCollection<TPluginInstance>();
-      _interfaceChannelMap = new ConcurrentDictionary<string, string>();
-      _runningPluginMap    = new ConcurrentDictionary<Guid, TPluginInstance>();
+      AllPluginsInternal  = new ObservableCollection<TPluginInstance>();
+      InterfaceChannelMap = new ConcurrentDictionary<string, string>();
+      RunningPluginMap    = new ConcurrentDictionary<Guid, TPluginInstance>();
 
-      AllPlugins = new ReadOnlyObservableCollection<TPluginInstance>(_allPlugins);
+      AllPlugins = new ReadOnlyObservableCollection<TPluginInstance>(AllPluginsInternal);
       PackageManager = new PluginPackageManager<TMeta>(
         Locations.PluginDir,
         Locations.PluginHomeDir,
         Locations.PluginPackageDir,
         Locations.PluginConfigFile,
-        RepoService,
         s => new NuGetSourceRepositoryProvider(s));
     }
 
@@ -107,9 +132,8 @@ namespace PluginManager
 
     #region Properties & Fields - Public
 
+    /// <summary>All plugins currently loaded</summary>
     public ReadOnlyObservableCollection<TPluginInstance> AllPlugins { get; }
-
-    public bool IsDisposed { get; private set; }
 
     #endregion
 
@@ -118,37 +142,53 @@ namespace PluginManager
 
     #region Methods
 
-    protected virtual async Task OnStarted()
+    /// <summary>
+    ///   Initializes the IPC server, scans for plugins and starts enabled plugins if
+    ///   <paramref name="startEnabledPlugins" /> is true.
+    /// </summary>
+    /// <param name="startEnabledPlugins">Whether to start enabled plugins</param>
+    /// <returns></returns>
+    /// <exception cref="InvalidProgramException">When already initialized</exception>
+    protected virtual async Task Initialize(bool startEnabledPlugins = true)
     {
       LogTo.Debug($"Initializing {GetType().Name}");
+
+      if (IpcServer != null || AllPlugins.Any())
+        throw new InvalidProgramException("Initialize called while PluginManagerBase is already initialized");
 
       StartIpcServer();
       //StartMonitoringPlugins();
 
       await RefreshPlugins();
-      await StartPlugins();
-      
+
+      if (startEnabledPlugins)
+        await StartPlugins();
+
       LogTo.Debug($"Initializing {GetType().Name}... Done");
     }
 
-    protected virtual void OnStopped()
+    /// <summary>Stops all running plugins and stops the IPC server.</summary>
+    protected virtual void Cleanup()
     {
       LogTo.Debug($"Cleaning up {GetType().Name}");
 
       StopPlugins().Wait();
+      StopIpcServer();
 
       LogTo.Debug($"Cleaning up {GetType().Name}... Done");
     }
-    
-    public async Task StartPlugins()
+
+    /// <summary>Starts all enabled plugins.</summary>
+    /// <returns>Whether all plugins started successfully</returns>
+    public async Task<bool> StartPlugins()
     {
       try
       {
-        LogTo.Information($"Starting all {_allPlugins.Count(p => p.IsEnabled)} enabled plugins out of {_allPlugins.Count}.");
+        LogTo.Information($"Starting all {AllPluginsInternal.Count(p => p.IsEnabled)} enabled plugins out of {AllPluginsInternal.Count}.");
 
-        var plugins = _allPlugins.Where(pi => pi.IsEnabled)
-                                 .OrderBy(pi => pi.IsDevelopment)
-                                 .DistinctBy(pi => pi.Package.Id);
+        var plugins = AllPluginsInternal.Where(pi => pi.IsEnabled)
+                                        .OrderBy(pi => pi.IsDevelopment)
+                                        .DistinctBy(pi => pi.Package.Id);
         var startTasks = plugins.Select(StartPlugin).ToList();
 
         var startTasksRes = await Task.WhenAll(startTasks);
@@ -157,6 +197,8 @@ namespace PluginManager
         var failureCount = startTasksRes.Length - successCount;
 
         LogTo.Information($"{successCount} started successfully, {failureCount} failed to start.");
+
+        return failureCount == 0;
       }
       catch (Exception ex)
       {
@@ -164,16 +206,19 @@ namespace PluginManager
         throw;
       }
     }
-    
-    public async Task StopPlugins()
+
+    /// <summary>Stops all running plugins</summary>
+    /// <returns>Whether all plugins stopped successfully</returns>
+    public async Task<bool> StopPlugins()
     {
       try
       {
-        LogTo.Information($"Stopping all {_runningPluginMap.Count} running plugins.");
+        LogTo.Information($"Stopping all {RunningPluginMap.Count} running plugins.");
 
-        var stopTasks = _runningPluginMap.Values.Select(StopPlugin);
+        var stopTasks       = RunningPluginMap.Values.Select(StopPlugin);
+        var stopTaskResults = await Task.WhenAll(stopTasks);
 
-        await Task.WhenAll(stopTasks);
+        return stopTaskResults.All(s => s);
       }
       catch (Exception ex)
       {
@@ -181,8 +226,10 @@ namespace PluginManager
         throw;
       }
     }
-    
-    protected virtual async Task RefreshPlugins()
+
+    /// <summary>Stops all running plugins, clears all loaded plugins, scans and load available plugin</summary>
+    /// <returns>The number of plugin loaded</returns>
+    protected virtual async Task<int> RefreshPlugins()
     {
       try
       {
@@ -190,13 +237,15 @@ namespace PluginManager
 
         await StopPlugins();
 
-        _allPlugins.Clear();
+        AllPluginsInternal.Clear();
         ScanLocalPlugins(true)
           .Select(CreatePluginInstance)
           .Distinct()
-          .ForEach(pi => _allPlugins.Add(pi));
+          .ForEach(pi => AllPluginsInternal.Add(pi));
 
-        LogTo.Information($"Found {_allPlugins.Count} plugins.");
+        LogTo.Information($"Found {AllPluginsInternal.Count} plugins.");
+
+        return AllPluginsInternal.Count;
       }
       catch (Exception ex)
       {
@@ -205,21 +254,47 @@ namespace PluginManager
       }
     }
 
+    /// <summary>
+    ///   Called immediately after checking the plugin passes the pre-requisites to be started,
+    ///   and before the plugin process has been created. Always call this base method if it is
+    ///   inherited.
+    /// </summary>
+    /// <param name="pluginInstance">The plugin to be started</param>
     protected virtual void OnPluginStarting(TPluginInstance pluginInstance)
     {
       LogTo.Information($"Starting {pluginInstance.Denomination} {pluginInstance.Package.Id}.");
 
-      _runningPluginMap[pluginInstance.OnStarting()] = pluginInstance;
+      RunningPluginMap[pluginInstance.OnStarting()] = pluginInstance;
     }
 
+    /// <summary>
+    /// Called after the plugin process has been started, and before confirming connection from it.
+    /// </summary>
+    /// <param name="pluginInstance">The plugin that has been started</param>
+    protected virtual void OnPluginStarted(TPluginInstance pluginInstance)
+    {
+      
+    }
+
+    /// <summary>
+    ///   Called after the plugin process has been started, and connection has been made with
+    ///   this Plugin Manager instance Always call this base method if it is inherited.
+    /// </summary>
+    /// <param name="pluginInstance">The connected plugin instance</param>
+    /// <param name="plugin">The connected plugin service</param>
     protected virtual void OnPluginConnected(TPluginInstance pluginInstance,
                                              IPlugin         plugin)
     {
       LogTo.Information($"Connected {pluginInstance.Denomination} {pluginInstance.Package.Id}.");
 
-      pluginInstance.OnConnected(plugin);
+      UISynchronizationContext.Send(_ => { pluginInstance.OnConnected(plugin); }, null);
     }
 
+    /// <summary>
+    ///   Called immediately after checking the plugin passes the pre-requisites to be stopped,
+    ///   and before sending it stop signals. Always call this base method if it is inherited.
+    /// </summary>
+    /// <param name="pluginInstance">The plugin to be stopped</param>
     protected virtual void OnPluginStopping(TPluginInstance pluginInstance)
     {
       LogTo.Information($"Stopping {pluginInstance.Denomination} {pluginInstance.Package.Id}.");
@@ -227,13 +302,19 @@ namespace PluginManager
       pluginInstance.OnStopping();
     }
 
+    /// <summary>
+    ///   Called after the plugin has been stopped or killed. Its
+    ///   <see cref="IPluginInstance{TParent, TMeta, IPlugin}.Process" /> is still available. Always
+    ///   call this base method if it is inherited.
+    /// </summary>
+    /// <param name="pluginInstance">The plugin that stopped</param>
     protected virtual void OnPluginStopped(TPluginInstance pluginInstance)
     {
       if (IsDisposed || pluginInstance.Status == PluginStatus.Stopped)
         return;
 
-      bool crashed = false;
-      var exitCode = pluginInstance.Process.ExitCode;
+      bool crashed  = false;
+      var  exitCode = pluginInstance.Process.ExitCode;
 
       try
       {
@@ -251,7 +332,7 @@ namespace PluginManager
       foreach (var interfaceType in pluginInstance.InterfaceChannelMap.Keys)
         UnregisterChannelType(interfaceType, pluginInstance.Guid, false);
 
-      _runningPluginMap.TryRemove(pluginInstance.Guid, out _);
+      RunningPluginMap.TryRemove(pluginInstance.Guid, out _);
 
       pluginInstance.OnStopped();
     }

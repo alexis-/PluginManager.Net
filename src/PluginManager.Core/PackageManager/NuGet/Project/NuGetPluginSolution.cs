@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 18:26
+// Modified On:  2020/03/09 12:46
 // Modified By:  Alexis
 
 #endregion
@@ -41,6 +41,7 @@ using NuGet.Frameworks;
 using NuGet.PackageManagement;
 using NuGet.Packaging.Core;
 using NuGet.ProjectManagement;
+using NuGet.Versioning;
 using PluginManager.Extensions;
 using PluginManager.PackageManager.Models;
 
@@ -86,6 +87,7 @@ namespace PluginManager.PackageManager.NuGet.Project
       _projectMap = _pluginRepo.Plugins.Select(
         p => new NuGetPluginProject<TMeta>(
           CreatePackageManager,
+          CanUninstallPackage,
           _currentFramework,
           _packageDirPath,
           _pluginHomeDirPath,
@@ -162,33 +164,6 @@ namespace PluginManager.PackageManager.NuGet.Project
 
     #region Methods
 
-    public async Task<bool> UninstallPluginAsync(
-      string            packageId,
-      bool              removeDependencies = true,
-      bool              forceRemove        = false,
-      CancellationToken cancellationToken  = default)
-    {
-      var project = GetPluginProject(packageId);
-
-      if (project == null)
-      {
-        LogTo.Information($"No such plugin project {packageId} exists for uninstallation");
-
-        return false;
-      }
-
-      await project.UninstallPluginAsync(
-        NuGetProjectContext,
-        removeDependencies,
-        forceRemove,
-        cancellationToken);
-
-      _pluginRepo.RemovePlugin(project.Plugin.Identity);
-      _projectMap.Remove(packageId);
-
-      return await _pluginRepo.SaveAsync();
-    }
-
     public async Task<bool> InstallPluginAsync(
       PackageIdentity   packageIdentity,
       TMeta             metadata                = default,
@@ -204,6 +179,7 @@ namespace PluginManager.PackageManager.NuGet.Project
       {
         project = new NuGetPluginProject<TMeta>(
           CreatePackageManager,
+          CanUninstallPackage,
           _currentFramework,
           _packageDirPath,
           _pluginHomeDirPath,
@@ -224,6 +200,67 @@ namespace PluginManager.PackageManager.NuGet.Project
       return await _pluginRepo.SaveAsync();
     }
 
+    public async Task<bool> UninstallPluginAsync(
+      string            packageId,
+      bool              removeDependencies = true,
+      bool              forceRemove        = false,
+      CancellationToken cancellationToken  = default)
+    {
+      var project = GetPluginProject(packageId);
+
+      if (project == null)
+      {
+        LogTo.Warning($"No such plugin project {packageId} exists for uninstalling");
+
+        return false;
+      }
+
+      try
+      {
+        await project.UninstallPluginAsync(
+          NuGetProjectContext,
+          removeDependencies,
+          forceRemove,
+          cancellationToken);
+      }
+      catch (InvalidOperationException ex) when (ex.InnerException is OperationCanceledException) { }
+
+      _pluginRepo.RemovePlugin(project.Plugin.Identity);
+      _projectMap.Remove(packageId);
+
+      return await _pluginRepo.SaveAsync();
+    }
+
+    public async Task<bool> UpdatePluginAsync(
+      string            packageId,
+      NuGetVersion      version                 = null,
+      bool              allowPrereleaseVersions = false,
+      CancellationToken cancellationToken       = default)
+    {
+      var project = GetPluginProject(packageId);
+
+      if (project == null)
+      {
+        LogTo.Warning($"No such plugin project {packageId} exists for updating");
+
+        return false;
+      }
+
+      try
+      {
+        await project.UpdatePluginAsync(
+          NuGetProjectContext,
+          _sourceRepositories.GetRepositories(),
+          version,
+          allowPrereleaseVersions,
+          cancellationToken);
+      }
+      catch (InvalidOperationException ex) when (ex.InnerException is OperationCanceledException) { }
+      
+      _pluginRepo.UpdatePlugin(packageId, project.Plugin.Identity.Version);
+
+      return await _pluginRepo.SaveAsync();
+    }
 
     public NuGetPluginProject<TMeta> GetPluginProject(LocalPluginPackage<TMeta> plugin)
     {
@@ -241,10 +278,15 @@ namespace PluginManager.PackageManager.NuGet.Project
         _sourceRepositories,
         _settings,
         this,
-        new NuGetDeleteOnRestartManager())
+        new NuGetDeleteOnRestartManager<TMeta>(_pluginRepo))
       {
         PackagesFolderNuGetProject = project
       };
+    }
+
+    private bool CanUninstallPackage(PackageIdentity pkgIdentity)
+    {
+      return _pluginRepo.GetPluginsDependingOn(pkgIdentity).Count() <= 1;
     }
 
     #endregion

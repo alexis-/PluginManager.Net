@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/23 01:07
+// Modified On:  2020/03/09 23:39
 // Modified By:  Alexis
 
 #endregion
@@ -29,21 +29,56 @@
 
 
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NuGet.Packaging.Core;
 using NuGet.Protocol.Core.Types;
 
+// ReSharper disable PossibleMultipleEnumeration
+
 namespace PluginManager.PackageManager.Models
 {
+  /// <summary>
+  ///   Represents an online NuGet plugin package. <see cref="OnlinePluginPackage{TMeta}" />
+  ///   should only be used from packages that aren't locally installed but are available on a NuGet
+  ///   repository.
+  /// </summary>
+  /// <typeparam name="TMeta"></typeparam>
   public class OnlinePluginPackage<TMeta> : PluginPackage<TMeta>
   {
     #region Constructors
 
-    public OnlinePluginPackage(string packageId, TMeta metadata, IEnumerable<IPackageSearchMetadata> srl)
+    /// <summary>Create from search results</summary>
+    /// <param name="packageId">The package id</param>
+    /// <param name="metadata">The associated package metadata</param>
+    /// <param name="onlineVersions">
+    ///   All available versions for given <paramref name="packageId" />
+    /// </param>
+    public OnlinePluginPackage(string packageId, TMeta metadata, List<VersionInfo> onlineVersions)
       : base(new PackageIdentity(packageId, null), metadata)
     {
-      OnlineVersions = srl.Select(sr => sr.Identity.Version);
+      if (onlineVersions == null)
+        throw new ArgumentNullException(nameof(onlineVersions));
+
+      if (onlineVersions.Any() == false)
+        throw new ArgumentException($"{nameof(onlineVersions)} cannot be empty");
+
+      SetOnlineVersions(onlineVersions);
+    }
+
+    /// <summary>Copy the information from <paramref name="localPackage" /></summary>
+    /// <param name="localPackage">The local package to copy from</param>
+    public OnlinePluginPackage(LocalPluginPackage<TMeta> localPackage)
+      : base(localPackage.Identity, localPackage.Metadata)
+    {
+      if (localPackage.OnlineVersions == null)
+        throw new ArgumentNullException(nameof(localPackage.OnlineVersions));
+
+      if (localPackage.OnlineVersions.Any() == false)
+        throw new ArgumentException($"{nameof(localPackage.OnlineVersions)} cannot be empty");
+
+      SetOnlineVersions(localPackage);
     }
 
     #endregion

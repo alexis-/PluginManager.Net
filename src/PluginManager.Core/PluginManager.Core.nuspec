@@ -17,23 +17,20 @@
 	
     <frameworkAssemblies>
       <frameworkAssembly targetFramework="net472" assemblyName="Microsoft.CSharp" />
-      <frameworkAssembly targetFramework="net472" assemblyName="System.ComponentModel.Composition" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Data" />
-      <frameworkAssembly targetFramework="net472" assemblyName="System.IdentityModel" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.IO.Compression" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Net.Http" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Numerics" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Runtime.Remoting" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Security" />
-      <frameworkAssembly targetFramework="net472" assemblyName="System.ServiceModel" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Xml" />
       <frameworkAssembly targetFramework="net472" assemblyName="System.Xml.Linq" />
     </frameworkAssemblies>
 	
     <dependencies>
       <group targetFramework="net472">
-        <dependency id="PluginManager.Interop" version="0.2.1.5" />
-        <dependency id="PluginManager.PluginHost" version="0.2.1.2" />
+        <dependency id="PluginManager.Interop" version="0.2.1.35" />
+        <dependency id="PluginManager.PluginHost" version="0.2.1.39" />
         <dependency id="CommandLineParser" version="2.7.82" />
         <dependency id="Extensions.System.IO" version="0.1.0.2" />
         <dependency id="Microsoft.Web.Xdt" version="3.0.0" />
@@ -51,5 +48,7 @@
   </metadata>
   <files>
     <file src="PluginManager.Core.dll" target="lib\net472" />
+    <file src="PluginManager.Core.xml" target="lib\net472" />
+    <file src="PluginManager.Core.pdb" target="lib\net472" />
   </files>
 </package>

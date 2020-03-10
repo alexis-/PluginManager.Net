@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 11:32
+// Modified On:  2020/03/10 00:43
 // Modified By:  Alexis
 
 #endregion
@@ -40,10 +40,7 @@ using PluginManager.PackageManager.Models;
 
 namespace PluginManager.Models
 {
-  /// <summary>
-  ///   Represents an instance of a plugin. Its process information will be updated if it is
-  ///   running.
-  /// </summary>
+  /// <inheritdoc cref="IPluginInstance{TParent,TMeta,IPlugin}" />
   [Serializable]
   public abstract class PluginInstanceBase<TParent, TMeta, IPlugin>
     : IEquatable<PluginInstanceBase<TParent, TMeta, IPlugin>>, IPluginInstance<TParent, TMeta, IPlugin>
@@ -51,6 +48,8 @@ namespace PluginManager.Models
   {
     #region Constructors
 
+    /// <summary>Initialize this instance</summary>
+    /// <param name="package">The local NuGet package corresponding to this Plugin Instance</param>
     protected PluginInstanceBase(LocalPluginPackage<TMeta> package)
     {
       Package       = package;
@@ -64,6 +63,7 @@ namespace PluginManager.Models
 
     #region Properties & Fields - Public
 
+    /// <summary>The metadata associated with this plugin</summary>
     public TMeta Metadata => Package.Metadata;
 
     #endregion
@@ -73,20 +73,35 @@ namespace PluginManager.Models
 
     #region Properties Impl - Public
 
+    /// <inheritdoc />
     public LocalPluginPackage<TMeta> Package { get; }
 
-    public PluginStatus Status  { get; private set; } = PluginStatus.Stopped;
-    public IPlugin      Plugin  { get; private set; }
-    public Guid         Guid    { get; private set; }
-    public Process      Process { get; set; }
+    /// <inheritdoc />
+    public PluginStatus Status { get; private set; } = PluginStatus.Stopped;
 
-    public AsyncLock             Lock           { get; } = new AsyncLock();
+    /// <inheritdoc />
+    public IPlugin Plugin { get; private set; }
+
+    /// <inheritdoc />
+    public Guid Guid { get; private set; }
+
+    /// <inheritdoc />
+    public Process Process { get; set; }
+
+    /// <inheritdoc />
+    public AsyncLock Lock { get; } = new AsyncLock();
+
+    /// <inheritdoc />
     public AsyncManualResetEvent ConnectedEvent { get; } = new AsyncManualResetEvent(false);
 
+    /// <inheritdoc />
     public ConcurrentDictionary<string, string> InterfaceChannelMap { get; } = new ConcurrentDictionary<string, string>();
 
-    public bool   IsDevelopment { get; }
-    public string Denomination  => IsDevelopment ? "development plugin" : "plugin";
+    /// <inheritdoc />
+    public bool IsDevelopment { get; }
+
+    /// <inheritdoc />
+    public string Denomination => IsDevelopment ? "development plugin" : "plugin";
 
     #endregion
 
@@ -95,6 +110,7 @@ namespace PluginManager.Models
 
     #region Methods Impl
 
+    /// <inheritdoc />
     public override string ToString()
     {
       return $"{Denomination} {Package.Id}";
@@ -119,6 +135,7 @@ namespace PluginManager.Models
       return Package != null ? Package.GetHashCode() : 0;
     }
 
+    /// <inheritdoc />
     public bool Equals(PluginInstanceBase<TParent, TMeta, IPlugin> other)
     {
       if (ReferenceEquals(null, other))
@@ -126,38 +143,43 @@ namespace PluginManager.Models
       if (ReferenceEquals(this, other))
         return true;
 
-      return object.Equals(Package, other.Package);
+      return Equals(Package, other.Package);
     }
 
+    /// <inheritdoc />
     public virtual Guid OnStarting()
     {
+      Guid = Guid.NewGuid();
       Status = PluginStatus.Starting;
 
       ConnectedEvent.Reset();
 
-      return Guid = Guid.NewGuid();
+      return Guid;
     }
 
+    /// <inheritdoc />
     public virtual void OnConnected(IPlugin plugin)
     {
-      Status = PluginStatus.Connected;
       Plugin = plugin;
+      Status = PluginStatus.Connected;
 
       ConnectedEvent.Set();
     }
 
+    /// <inheritdoc />
     public virtual void OnStopping()
     {
       Status = PluginStatus.Stopping;
     }
 
+    /// <inheritdoc />
     public virtual void OnStopped()
     {
-      Status  = PluginStatus.Stopped;
       Process = null;
       Plugin  = default;
       Guid    = default;
-      
+      Status = PluginStatus.Stopped;
+
       ConnectedEvent.Set();
     }
 
@@ -168,17 +190,41 @@ namespace PluginManager.Models
 
     #region Methods
 
+    /// <summary>Equality operator</summary>
+    /// <param name="left"></param>
+    /// <param name="right"></param>
+    /// <returns></returns>
     public static bool operator ==(PluginInstanceBase<TParent, TMeta, IPlugin> left,
                                    PluginInstanceBase<TParent, TMeta, IPlugin> right)
     {
       return Equals(left, right);
     }
 
+    /// <summary>Inequality operator</summary>
+    /// <param name="left"></param>
+    /// <param name="right"></param>
+    /// <returns></returns>
     public static bool operator !=(PluginInstanceBase<TParent, TMeta, IPlugin> left,
                                    PluginInstanceBase<TParent, TMeta, IPlugin> right)
     {
       return !Equals(left, right);
     }
+
+    /// <summary>
+    ///   Raises the <see cref="PropertyChanged" /> event for Property
+    ///   <paramref name="propName" />
+    /// </summary>
+    /// <param name="propName"></param>
+    protected void OnPropertyChanged(string propName)
+    {
+      PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+    }
+
+    /// <summary>
+    ///   Called by Fody.PropertyChanged when <see cref="Status" /> changes. Override to
+    ///   implement custom behaviour. Calling base method isn't necessary.
+    /// </summary>
+    protected virtual void OnStatusChanged() { }
 
     #endregion
 
@@ -190,6 +236,7 @@ namespace PluginManager.Models
     /// <inheritdoc />
     public abstract bool Equals(TParent other);
 
+    /// <inheritdoc />
     public abstract bool IsEnabled { get; set; }
 
     #endregion
@@ -201,6 +248,7 @@ namespace PluginManager.Models
 
 #pragma warning disable CS0067
 
+    /// <inheritdoc />
     public event PropertyChangedEventHandler PropertyChanged;
 
 #pragma warning restore CS0067

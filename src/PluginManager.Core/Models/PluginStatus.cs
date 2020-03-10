@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 17:12
+// Modified On:  2020/03/04 14:36
 // Modified By:  Alexis
 
 #endregion
@@ -33,12 +33,29 @@ using System;
 
 namespace PluginManager.Models
 {
+  /// <summary>The current status of the plugin process</summary>
   [Serializable]
   public enum PluginStatus
   {
+    /// <summary>
+    ///   Set immediately after checking a plugin passes the pre-requisites to be started, and
+    ///   before its process is created.
+    /// </summary>
     Starting,
+
+    /// <summary>
+    ///   Set after a plugin process has been started, and connection has been made with the
+    ///   Plugin Manager instance.
+    /// </summary>
     Connected,
+
+    /// <summary>
+    ///   Set immediately after checking a plugin passes the pre-requisites to be stopped, and
+    ///   before sending it the stop signal.
+    /// </summary>
     Stopping,
+
+    /// <summary>Set when a plugin wasn't started, or after a plugin has been stopped or killed.</summary>
     Stopped,
   }
 }

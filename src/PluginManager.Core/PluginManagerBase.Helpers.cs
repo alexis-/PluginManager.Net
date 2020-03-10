@@ -50,7 +50,7 @@ namespace PluginManager
           return true;
 
         case PluginStatus.Stopped:
-          return _runningPluginMap.Values.Any(p => p.Package.Id == pluginInstance.Package.Id) == false;
+          return RunningPluginMap.Values.Any(p => p.Package.Id == pluginInstance.Package.Id) == false;
 
         default:
           return false;

@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 14:50
+// Modified On:  2020/02/27 00:28
 // Modified By:  Alexis
 
 #endregion
@@ -45,63 +45,15 @@ namespace PluginManager
     #region Methods Impl
 
     /// <inheritdoc />
-    public bool GetAssembliesPathsForPlugin(Guid                    sessionGuid,
-                                            out IEnumerable<string> pluginAssemblies,
-                                            out IEnumerable<string> dependenciesAssemblies)
-    {
-      string pluginPackageName = "N/A";
-      pluginAssemblies       = null;
-      dependenciesAssemblies = null;
-
-      try
-      {
-        var pluginInstance = _runningPluginMap[sessionGuid];
-
-        if (pluginInstance == null)
-        {
-          LogTo.Warning($"Plugin {sessionGuid} unexpected for assembly request. Aborting");
-          return false;
-        }
-
-        pluginPackageName = pluginInstance.Package.Id;
-
-        LogTo.Information($"Fetching assemblies requested by plugin {pluginPackageName}");
-
-        if (pluginInstance.IsDevelopment)
-          throw new InvalidOperationException($"Development plugin {pluginPackageName} cannot request assemblies paths");
-
-        var pm = PackageManager;
-
-        lock (pm)
-        {
-          var pluginPkg = pm.FindInstalledPluginById(pluginPackageName);
-
-          if (pluginPkg == null)
-            throw new InvalidOperationException($"Cannot find requested plugin package {pluginPackageName}");
-
-          pm.GetInstalledPluginAssembliesFilePath(
-            pluginPkg.Identity,
-            out var tmpPluginAssemblies,
-            out var tmpDependenciesAssemblies);
-
-          pluginAssemblies       = tmpPluginAssemblies.Select(p => p.FullPath);
-          dependenciesAssemblies = tmpDependenciesAssemblies.Select(p => p.FullPath);
-        }
-
-        return true;
-      }
-      catch (Exception ex)
-      {
-        LogTo.Error(ex, $"An exception occured while returning assemblies path for plugin {pluginPackageName}");
-
-        return false;
-      }
-    }
-
-    /// <inheritdoc />
     public ICore ConnectPlugin(string channel,
                                Guid   sessionGuid)
     {
+      if (channel == null)
+        throw new ArgumentNullException(nameof(channel));
+
+      if (sessionGuid == null)
+        throw new ArgumentNullException(nameof(sessionGuid));
+
       string pluginAssemblyName = "N/A";
 
       try
@@ -109,7 +61,7 @@ namespace PluginManager
         var plugin = RemotingServicesEx.ConnectToIpcServer<IPlugin>(channel);
         pluginAssemblyName = plugin.AssemblyName;
 
-        var pluginInstance = _runningPluginMap.SafeGet(sessionGuid);
+        var pluginInstance = RunningPluginMap.SafeGet(sessionGuid);
 
         if (pluginInstance == null)
         {
@@ -139,7 +91,10 @@ namespace PluginManager
     /// <inheritdoc />
     public string GetService(string remoteInterfaceType)
     {
-      return _interfaceChannelMap.SafeGet(remoteInterfaceType);
+      if (remoteInterfaceType == null)
+        throw new ArgumentNullException(nameof(remoteInterfaceType));
+
+      return InterfaceChannelMap.SafeGet(remoteInterfaceType);
     }
 
     /// <inheritdoc />
@@ -147,17 +102,27 @@ namespace PluginManager
                                        string remoteServiceType,
                                        string channelName)
     {
-      var pluginInst = _runningPluginMap.SafeGet(sessionGuid);
+      if (sessionGuid == null)
+        throw new ArgumentNullException(nameof(sessionGuid));
+
+      if (remoteServiceType == null)
+        throw new ArgumentNullException(nameof(remoteServiceType));
+
+      if (channelName == null)
+        throw new ArgumentNullException(nameof(channelName));
+
+      var pluginInst = RunningPluginMap.SafeGet(sessionGuid);
 
       if (pluginInst == null)
-        throw new ArgumentException("Invalid plugin");
+        throw new ArgumentException($"No plugin matching session guid {sessionGuid} could be found");
 
       pluginInst.InterfaceChannelMap[remoteServiceType] = channelName;
-      _interfaceChannelMap[remoteServiceType]           = channelName;
+      InterfaceChannelMap[remoteServiceType]            = channelName;
 
       Task.Run(() => NotifyServicePublished(remoteServiceType));
 
-      return new PluginChannelDisposer<TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin>(this, remoteServiceType, sessionGuid);
+      return new PluginChannelDisposer<TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin>(
+        this, remoteServiceType, sessionGuid);
     }
 
     #endregion
@@ -175,7 +140,7 @@ namespace PluginManager
 
       try
       {
-        var pluginInst = _runningPluginMap.SafeGet(sessionGuid);
+        var pluginInst = RunningPluginMap.SafeGet(sessionGuid);
 
         if (pluginInst == null)
           throw new ArgumentException($"Plugin not found for service {remoteServiceType}");
@@ -184,7 +149,7 @@ namespace PluginManager
           @lock = pluginInst.Lock.Lock();
 
         pluginInst.InterfaceChannelMap.TryRemove(remoteServiceType, out _);
-        _interfaceChannelMap.TryRemove(remoteServiceType, out _);
+        InterfaceChannelMap.TryRemove(remoteServiceType, out _);
 
         Task.Run(() => NotifyServiceRevoked(remoteServiceType));
       }
@@ -196,7 +161,7 @@ namespace PluginManager
 
     private async Task NotifyServicePublished(string remoteServiceType)
     {
-      foreach (var pluginInstance in _runningPluginMap.Values)
+      foreach (var pluginInstance in RunningPluginMap.Values)
         using (await pluginInstance.Lock.LockAsync())
         {
           if (pluginInstance.Status != PluginStatus.Connected)
@@ -218,7 +183,7 @@ namespace PluginManager
 
     private async Task NotifyServiceRevoked(string remoteServiceType)
     {
-      foreach (var pluginInstance in _runningPluginMap.Values)
+      foreach (var pluginInstance in RunningPluginMap.Values)
         using (await pluginInstance.Lock.LockAsync())
         {
           if (pluginInstance.Status != PluginStatus.Connected)

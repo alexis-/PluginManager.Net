@@ -21,27 +21,45 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/23 02:52
+// Modified On:  2020/03/08 15:25
 // Modified By:  Alexis
 
 #endregion
 
 
-#pragma warning disable 1591
 
 
-namespace PluginManager.Logger
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.IO;
+using Extensions.System.IO;
+
+namespace PluginManager.Extensions
 {
-  /// <summary>
-  /// https://github.com/Fody/Anotar#custom-logging
-  /// </summary>
-  public class LoggerFactory
+  [EditorBrowsable(EditorBrowsableState.Never)]
+  internal static class DirectoryPathEx
   {
     #region Methods
 
-    public static PluginManagerLogger GetLogger<T>()
+    public static IEnumerable<NormalizedPath> ListAllFilesAndDirectories(this DirectoryPath dir)
     {
-      return new PluginManagerLogger();
+      var dirInfo      = new DirectoryInfo(dir.FullPathWin);
+      var filesAndDirs = new List<NormalizedPath>();
+
+      ListAllFilesAndDirectories(dirInfo, filesAndDirs);
+
+      return filesAndDirs;
+    }
+
+    private static void ListAllFilesAndDirectories(DirectoryInfo dirInfo, List<NormalizedPath> filesAndDirs)
+    {
+      filesAndDirs.Add(new DirectoryPath(dirInfo.FullName));
+
+      foreach (var fileInfo in dirInfo.EnumerateFiles())
+        filesAndDirs.Add(new FilePath(fileInfo.FullName));
+
+      foreach (var subDirInfo in dirInfo.EnumerateDirectories())
+        ListAllFilesAndDirectories(subDirInfo, filesAndDirs);
     }
 
     #endregion

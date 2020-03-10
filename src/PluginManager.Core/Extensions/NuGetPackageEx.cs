@@ -110,14 +110,21 @@ namespace PluginManager.Extensions
       NuGetFramework     targetFramework)
     {
       var pkgPath       = pkg.GetPackageDirectoryPath(project);
+
+      if (pkgPath == null)
+        yield break;
+
       var archiveReader = pkg.GetArchiveReader(project);
+
+      if (archiveReader == null)
+        yield break;
 
       FrameworkSpecificGroup contentGroup = SelectFrameworkMostCompatibleGroup(targetFramework, archiveReader.GetContentItems().ToList());
 
       if (contentGroup != null)
-        foreach (DirectoryPath contentPath in Enumerable.Select<string, string>(contentGroup.Items, x => new FilePath(x).Segments[0])
-                                                        .Distinct()
-                                                        .Select(x => pkgPath.Combine(x)))
+        foreach (DirectoryPath contentPath in contentGroup.Items.Select(x => new FilePath(x).Segments[0])
+                                                          .Distinct()
+                                                          .Select(x => pkgPath.Combine(x)))
         {
           LogTo.Trace(
             $"Found content path {contentPath} from compatible content group {contentGroup.TargetFramework.DotNetFrameworkName} from package {pkg.Identity}");
@@ -128,7 +135,12 @@ namespace PluginManager.Extensions
 
     private static PackageArchiveReader GetArchiveReader(this NuGetPackage pkg, FolderNuGetProject project)
     {
-      return new PackageArchiveReader(pkg.GetPackageFilePath(project).FullPath, null, null);
+      var pkgPath = pkg.GetPackageFilePath(project)?.FullPath;
+
+      if (pkgPath == null)
+        return null;
+
+      return new PackageArchiveReader(pkgPath, null, null);
     }
 
     /// The following method is originally from the internal MSBuildNuGetProjectSystemUtility class
@@ -155,7 +167,7 @@ namespace PluginManager.Extensions
     {
       if (frameworkSpecificGroup != null)
         return frameworkSpecificGroup.HasEmptyFolder
-          || Enumerable.Any<string>(frameworkSpecificGroup.Items)
+          || frameworkSpecificGroup.Items.Any<string>()
           || !frameworkSpecificGroup.TargetFramework.Equals(NuGetFramework.AnyFramework);
 
       return false;

@@ -39,6 +39,12 @@ namespace PluginManager.PluginHost
   {
     #region Properties & Fields - Public
 
+    [Option("packageRootFolder")]
+    public string PackageRootFolder { get; set; }
+
+    [Option("pluginAndDependenciesAssembliesPath")]
+    public string PluginAndDependenciesAssembliesPath { get; set; }
+
     [Option("pluginHostTypeAssemblyName", Required = true)]
     public string PluginHostTypeAssemblyName { get; set; }
 

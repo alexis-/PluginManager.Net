@@ -30,18 +30,50 @@
 
 
 using System;
+using PluginManager.Interop.Plugins;
 
 namespace PluginManager.Interop.Contracts
 {
+  /// <summary>
+  /// Contract interface that plugins publish as a remote service
+  /// </summary>
   public interface IPluginBase : IDisposable
   {
+    /// <summary>
+    /// The friendly name of the plugin (as opposed to its package name)
+    /// </summary>
     string Name            { get; }
+
+    /// <summary>
+    /// The plugin's assembly name
+    /// </summary>
     string AssemblyName    { get; }
+
+    /// <summary>
+    /// The plugin's version (using the assembly's version is recommended)
+    /// </summary>
     string AssemblyVersion { get; }
+
+    /// <summary>
+    /// The Channel name where the plugin publishes its remote service
+    /// </summary>
     string ChannelName     { get; }
 
+    /// <summary>
+    /// Called after PluginHost.exe has instantiated an instance of <see cref="IPluginBase"/> and successfully injected its properties (see <see cref="PluginBase{TPlugin,IPlugin,ICore}" />).
+    /// </summary>
     void OnInjected();
+
+    /// <summary>
+    /// Called when a service is published by another plugin
+    /// </summary>
+    /// <param name="interfaceTypeName">The name of the type that is published</param>
     void OnServicePublished(string interfaceTypeName);
+
+    /// <summary>
+    /// Called when a service is revoked by another plugin
+    /// </summary>
+    /// <param name="interfaceTypeName">The name of the type that got revoked</param>
     void OnServiceRevoked(string   interfaceTypeName);
   }
 }

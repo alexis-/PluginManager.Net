@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 01:04
+// Modified On:  2020/03/06 16:42
 // Modified By:  Alexis
 
 #endregion
@@ -32,10 +32,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Security;
 using System.Security.Permissions;
+using System.Windows;
 
 namespace PluginHost
 {
@@ -43,7 +45,34 @@ namespace PluginHost
   {
     #region Methods
 
-    public static IDisposable Create(string  pluginHostTypeAssemblyName,
+    /// <summary>
+    ///   Instantiate the PluginHost in a new AppDomain. The newly created AppDomain doesn't
+    ///   load the PluginHost.exe assembly nor any other assembly than those on which the plugin
+    ///   depends.
+    /// </summary>
+    /// <param name="packageRootFolder">
+    ///   The root folder underneath which all packages and their
+    ///   assemblies are located
+    /// </param>
+    /// <param name="pluginAndDependenciesAssembliesPath">
+    ///   The file path to plugin's and its
+    ///   dependencies' assemblies. Paths should be relative to <paramref name="packageRootFolder" />
+    /// </param>
+    /// <param name="pluginHostTypeAssemblyName">
+    ///   The name of assembly in which the PluginHost type's
+    ///   assembly is defined
+    /// </param>
+    /// <param name="pluginHostTypeQualifiedName">The namespace-qualified name for the PluginHost type</param>
+    /// <param name="pluginPackageName">The plugin's package name</param>
+    /// <param name="pluginHomeDir">The home directory of the plugin</param>
+    /// <param name="sessionGuid">The session guid used to authenticate with the Plugin Manager</param>
+    /// <param name="mgrChannelName">The Plugin Manager's remote service channel name</param>
+    /// <param name="mgrProcess">The Plugin Manager's process</param>
+    /// <param name="isDev">Whether the plugin is a development plugin</param>
+    /// <returns>The instantiated plugin cast to <see cref="IDisposable" /></returns>
+    public static IDisposable Create(string  packageRootFolder,
+                                     string  pluginAndDependenciesAssembliesPath,
+                                     string  pluginHostTypeAssemblyName,
                                      string  pluginHostTypeQualifiedName,
                                      string  pluginPackageName,
                                      string  pluginHomeDir,
@@ -52,30 +81,77 @@ namespace PluginHost
                                      Process mgrProcess,
                                      bool    isDev)
     {
-      var appDomain = CreateAppDomain(pluginPackageName, pluginHomeDir, isDev);
+      var appDomain = CreateAppDomain(
+        pluginPackageName,
+        packageRootFolder,
+        pluginAndDependenciesAssembliesPath,
+        pluginHomeDir,
+        isDev);
+
+      string pluginEntryAssemblyFilePath =
+        FindAssemblyFilePath(isDev,
+                             pluginHomeDir,
+                             pluginPackageName,
+                             packageRootFolder,
+                             pluginAndDependenciesAssembliesPath);
+
+      if (string.IsNullOrWhiteSpace(pluginEntryAssemblyFilePath))
+      {
+        Console.Error.WriteLine(
+          $"Unable to find {pluginPackageName} assembly file path "
+          + $"in assembly list {pluginAndDependenciesAssembliesPath}");
+        Application.Current.Shutdown(PluginHostConst.ExitCouldNotFindPluginAssembly);
+      }
 
       return (IDisposable)appDomain.CreateInstanceAndUnwrap(
         pluginHostTypeAssemblyName, pluginHostTypeQualifiedName,
         false,
         BindingFlags.Public | BindingFlags.Instance,
         null,
-        new object[] { pluginPackageName, sessionGuid, mgrChannelName, mgrProcess, isDev },
+        new object[]
+        {
+          pluginEntryAssemblyFilePath,
+          sessionGuid,
+          mgrChannelName,
+          mgrProcess,
+          isDev
+        },
         null,
         null
       );
     }
 
+    /// <summary>
+    ///   Creates the <see cref="AppDomain" /> that will host the plugin instance. The Assembly
+    ///   Resolver for the plugin's and its dependencies' assemblies is instantiated in the plugin's
+    ///   AppDomain itself. This avoids any unnecessary cross-AppDomain communication, and doesn't
+    ///   require the plugin's AppDomain to load the PluginHost.exe assembly.
+    /// </summary>
+    /// <param name="packageName">The plugin's package name</param>
+    /// <param name="packageRootFolder">
+    ///   The root folder underneath which all packages and their
+    ///   assemblies are located
+    /// </param>
+    /// <param name="pluginAndDependenciesAssembliesPath">
+    ///   The file path to plugin's and its
+    ///   dependencies' assemblies. Paths should be relative to <paramref name="packageRootFolder" />
+    /// </param>
+    /// <param name="pluginHomeDir">The home directory of the plugin</param>
+    /// <param name="isDev">Whether the plugin is a development plugin</param>
+    /// <returns>The created <see cref="AppDomain" /></returns>
     private static AppDomain CreateAppDomain(string packageName,
-                                             string homeDir,
+                                             string packageRootFolder,
+                                             string pluginAndDependenciesAssembliesPath,
+                                             string pluginHomeDir,
                                              bool   isDev)
     {
       var appDomainSetup = new AppDomainSetup
       {
-        ApplicationBase = homeDir,
-        PrivateBinPath  = GetAppDomainBinPath(homeDir),
+        ApplicationBase = pluginHomeDir,
+        PrivateBinPath  = GetAppDomainBinPath(pluginHomeDir),
       };
 
-      var permissions = GetAppDomainPermissions(packageName, homeDir, isDev);
+      var permissions = GetAppDomainPermissions(packageName, pluginHomeDir, isDev);
 
       var appDomain = AppDomain.CreateDomain(
         PluginHostConst.AppDomainName,
@@ -84,12 +160,96 @@ namespace PluginHost
         permissions
       );
 
+      // Instantiate the assembly resolver in the child's App Domain
+      if (isDev == false)
+      {
+        var pluginManagerInteropAssemblyFilePath = FindAssemblyFilePath(
+          false,
+          null,
+          PluginHostConst.PluginManagerInteropAssemblyName,
+          packageRootFolder,
+          pluginAndDependenciesAssembliesPath);
+
+        if (string.IsNullOrWhiteSpace(pluginManagerInteropAssemblyFilePath))
+        {
+          Console.Error.WriteLine(
+            $"Unable to find {PluginHostConst.PluginManagerInteropAssemblyName} assembly file path "
+            + $"in assembly list {pluginAndDependenciesAssembliesPath}");
+          Application.Current.Shutdown(PluginHostConst.ExitCouldNotFindInteropAssembly);
+          return null; // Avoids intellisense null reference confusion
+        }
+
+        appDomain.CreateInstanceFrom(
+          pluginManagerInteropAssemblyFilePath,
+          PluginHostConst.PluginManagerInteropAssemblyResolverType,
+          false,
+          BindingFlags.Public | BindingFlags.Instance,
+          null,
+          new object[]
+          {
+            packageRootFolder,
+            pluginAndDependenciesAssembliesPath
+          },
+          null,
+          null
+        );
+      }
+
       return appDomain;
     }
 
+    /// <summary>
+    ///   If <paramref name="isDev" /> is <see langword="false" />, tries to find the
+    ///   <paramref name="assemblyName" /> assembly's file path in
+    ///   <paramref name="pluginAndDependenciesAssembliesPath" />. If <paramref name="isDev" /> is
+    ///   <see langword="true" />, assumes the assembly file is located in
+    ///   <paramref name="pluginHomeDir" />
+    /// </summary>
+    /// <param name="isDev">Whether the plugin is a development plugin</param>
+    /// <param name="pluginHomeDir">The home directory of the plugin</param>
+    /// <param name="assemblyName">The assembly name for which to find the assembly file path</param>
+    /// <param name="packageRootFolder">
+    ///   The root folder underneath which all packages and their
+    ///   assemblies are located
+    /// </param>
+    /// <param name="pluginAndDependenciesAssembliesPath">
+    ///   The file path to plugin's and its
+    ///   dependencies' assemblies. Paths should be relative to <paramref name="packageRootFolder" />
+    /// </param>
+    /// <returns>PluginManager.Interop assembly's file path</returns>
+    private static string FindAssemblyFilePath(
+      bool   isDev,
+      string pluginHomeDir,
+      string assemblyName,
+      string packageRootFolder,
+      string pluginAndDependenciesAssembliesPath)
+    {
+      if (isDev)
+        return Path.Combine(pluginHomeDir, assemblyName + ".dll");
+
+      var pluginManagerAssemblyFileName = assemblyName + ".dll";
+      var pluginAndDependenciesAssembliesPathArr = pluginAndDependenciesAssembliesPath.Split(
+        new[] { PluginHostConst.PluginAndDependenciesAssembliesSeparator },
+        StringSplitOptions.RemoveEmptyEntries);
+
+      var pluginManagerAssembly = pluginAndDependenciesAssembliesPathArr.FirstOrDefault(
+        fp => fp.EndsWith(pluginManagerAssemblyFileName));
+
+      if (pluginManagerAssembly == null)
+        return null;
+
+      return packageRootFolder + pluginManagerAssembly;
+    }
+
+    /// <summary>Creates the AppDomain's Private path</summary>
+    /// <param name="homeDir"></param>
+    /// <returns></returns>
     private static string GetAppDomainBinPath(string homeDir)
     {
-      List<string> ret = new List<string> { homeDir + '\\' };
+      if (homeDir.EndsWith("\\") == false)
+        homeDir += "\\";
+
+      List<string> ret = new List<string> { homeDir };
 
       //if (string.IsNullOrWhiteSpace(AppDomain.CurrentDomain.SetupInformation.PrivateBinPath) == false)
       //  ret.AddRange(AppDomain.CurrentDomain.SetupInformation.PrivateBinPath.Split(';'));
@@ -100,6 +260,11 @@ namespace PluginHost
     }
 
     // ReSharper disable UnusedParameter.Local
+    /// <summary>Set up AppDomain's permissions (TODO)</summary>
+    /// <param name="packageName"></param>
+    /// <param name="homeDir"></param>
+    /// <param name="isDev"></param>
+    /// <returns></returns>
     private static PermissionSet GetAppDomainPermissions(string packageName,
                                                          string homeDir,
                                                          bool   isDev)

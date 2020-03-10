@@ -49,7 +49,7 @@ namespace PluginManager.PackageManager.NuGet.Project
 
     public NuGetProjectContext(ISettings settings)
     {
-      var nuGetLogger = new PluginManagerLogger();
+      var nuGetLogger = LoggerFactory.GetLogger<object>();
 
       PackageExtractionContext = new PackageExtractionContext(
         PackageSaveMode.Defaultv3,
@@ -84,6 +84,7 @@ namespace PluginManager.PackageManager.NuGet.Project
 
     #region Methods Impl
 
+    // TODO: Replace LogTo calls
     public void Log(MessageLevel    level,
                     string          message,
                     params object[] args)

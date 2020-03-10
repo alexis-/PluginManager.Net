@@ -59,7 +59,7 @@ namespace PluginManager.Interop.PluginHost
     #region Constructors
 
     protected PluginHostBase(
-      string  pluginPackageName,
+      string  pluginEntryAssemblyFilePath,
       Guid    sessionGuid,
       string  mgrChannelName,
       Process mgrProcess,
@@ -74,38 +74,12 @@ namespace PluginManager.Interop.PluginHost
         return;
       }
 
-      // Get required assemblies name
-      IEnumerable<string> pluginAssemblies;
-      IEnumerable<string> dependenciesAssemblies;
-
-      if (isDev)
-      {
-        var homePath       = AppDomain.CurrentDomain.BaseDirectory;
-        var pluginFilePath = Path.Combine(homePath, pluginPackageName + ".dll");
-
-        pluginAssemblies = new List<string>
-        {
-          pluginFilePath
-        };
-        dependenciesAssemblies = new List<string>();
-      }
-
-      else if (pluginMgr.GetAssembliesPathsForPlugin(
-        sessionGuid,
-        out pluginAssemblies,
-        out dependenciesAssemblies) == false)
-      {
-        Exit(PluginHostConst.ExitCouldNotGetAssembliesPaths);
-        return;
-      }
-
       // Setup assembly resolution
-      AppDomain.CurrentDomain.AssemblyResolve += AssemblyResolve;
+      if (isDev)
+        AppDomain.CurrentDomain.AssemblyResolve += DevelopmentPluginAssemblyResolver;
 
       // Load & create plugin
-      _plugin = LoadAssembliesAndCreatePluginInstance(
-        dependenciesAssemblies,
-        pluginAssemblies);
+      _plugin = LoadAssembliesAndCreatePluginInstance(pluginEntryAssemblyFilePath);
 
       if (_plugin == null)
       {

@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 17:36
+// Modified On:  2020/02/26 20:45
 // Modified By:  Alexis
 
 #endregion
@@ -30,13 +30,41 @@
 
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+using PluginManager.PackageManager;
+using PluginManager.PackageManager.Models;
 
 namespace PluginManager.Contracts
 {
+  /// <summary>
+  /// Contract interface used by the Plugin Manager to fetch available plugin from your API endpoint.
+  /// </summary>
+  /// <typeparam name="TMeta">The Metadata type which define data associated with each plugin</typeparam>
   public interface IPluginRepositoryService<TMeta>
   {
-    Task<Dictionary<string, TMeta>> ListPlugins();
-    bool                            UpdateEnabled { get; }
+    /// <summary>Whether plugin updates are enabled</summary>
+    bool UpdateEnabled { get; }
+
+    /// <summary>Fetch the metadata of all plugin indexed by the API</summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Plugin metadatas or <see langword="null" /></returns>
+    Task<List<TMeta>> FetchPluginMetadataList(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///   Search available NuGet repositories for all packages matching
+    ///   <paramref name="searchTerm" /> and <paramref name="enablePreRelease" />. Only NuGet packages
+    ///   that are also indexed by the API should be included.
+    /// </summary>
+    /// <param name="searchTerm">Part or totality of the package name to look for</param>
+    /// <param name="enablePreRelease">Whether to include packages that are marked as pre-release</param>
+    /// <param name="pm">The package manager</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>All available packages or <see langword="null" /></returns>
+    Task<IEnumerable<PluginPackage<TMeta>>> SearchPlugins(
+      string                      searchTerm,
+      bool                        enablePreRelease,
+      PluginPackageManager<TMeta> pm,
+      CancellationToken           cancellationToken);
   }
 }

@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 11:51
+// Modified On:  2020/03/04 12:03
 // Modified By:  Alexis
 
 #endregion
@@ -30,7 +30,11 @@
 
 
 using System.Diagnostics;
+using System.Threading;
 using PluginManager.Contracts;
+using PluginManager.Interop.Contracts;
+using PluginManager.Interop.Plugins;
+using PluginManager.Logger;
 using PluginManager.PackageManager.Models;
 
 namespace PluginManager
@@ -39,15 +43,59 @@ namespace PluginManager
   {
     #region Methods Abs
 
-    public abstract IPluginLocations                Locations   { get; }
-    public abstract IPluginRepositoryService<TMeta> RepoService { get; }
+    /// <summary>
+    ///   A contract interface which returns the paths to various key folders and files used by
+    ///   the PluginManager. This should be implemented by project users.
+    /// </summary>
+    public abstract IPluginLocations Locations { get; }
 
-    public abstract string GetPluginHostTypeAssemblyName(TPluginInstance  pluginInstance);
+    /// <summary>
+    ///   Mandatory log adapter to forward PluginManager's log output to the application's log
+    ///   output
+    /// </summary>
+    public abstract ILogAdapter LogAdapter { get; }
+
+    /// <summary>
+    /// Synchronization context used to synchronize with the UI thread when updating an object from a worker thread
+    /// </summary>
+    public abstract SynchronizationContext UISynchronizationContext { get; }
+
+    /// <summary>
+    ///   Gets the assembly name of the Interop library that implements
+    ///   <see cref="IPluginBase" /> or <see cref="PluginBase{TPlugin,IPlugin,ICore}" />) to be loaded
+    ///   by PluginHost.exe
+    /// </summary>
+    /// <param name="pluginInstance">The plugin that will be started</param>
+    public abstract string GetPluginHostTypeAssemblyName(TPluginInstance pluginInstance);
+
+    /// <summary>
+    ///   Gets the namespace-prepended type name of the class which implements
+    ///   <see cref="IPluginBase" /> or <see cref="PluginBase{TPlugin,IPlugin,ICore}" />) to be
+    ///   instantiated by PluginHost.exe
+    /// </summary>
+    /// <param name="pluginInstance">The plugin that will be started</param>
     public abstract string GetPluginHostTypeQualifiedName(TPluginInstance pluginInstance);
-    public abstract ICore  GetCoreInstance();
 
+    /// <summary>Returns the service that needs to be shared with plugins</summary>
+    /// <returns>the service that needs to be shared with plugins</returns>
+    public abstract ICore GetCoreInstance();
+
+    /// <summary>
+    ///   Instantiates a <typeparamref name="TPluginInstance" /> for <paramref name="package" />
+    /// </summary>
+    /// <param name="package">The package for which <typeparamref name="TPluginInstance" /> is instantiated</param>
+    /// <returns>A <typeparamref name="TPluginInstance" /> instance</returns>
     public abstract TPluginInstance CreatePluginInstance(LocalPluginPackage<TMeta> package);
 
+    /// <summary>
+    ///   Instantiates a <typeparamref name="TMeta" /> for package <paramref name="packageName" />
+    ///   version <paramref name="fileVersionInfo" />
+    /// </summary>
+    /// <param name="packageName">The package name for which to create <typeparamref name="TMeta" /></param>
+    /// <param name="fileVersionInfo">
+    ///   The file version for which to create <typeparamref name="TMeta" />
+    /// </param>
+    /// <returns>A <typeparamref name="TMeta" /> instance or null</returns>
     public abstract TMeta CreateDevMetadata(string          packageName,
                                             FileVersionInfo fileVersionInfo);
 

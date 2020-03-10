@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 18:03
+// Modified On:  2020/03/09 14:07
 // Modified By:  Alexis
 
 #endregion
@@ -44,7 +44,6 @@ using NuGet.PackageManagement;
 using NuGet.Packaging.Core;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
-using PluginManager.Contracts;
 using PluginManager.Extensions;
 using PluginManager.Logger;
 using PluginManager.PackageManager.Models;
@@ -58,8 +57,6 @@ namespace PluginManager.PackageManager
   public class PluginPackageManager<TMeta> : IReadOnlyCollection<PluginPackage<TMeta>>
   {
     #region Properties & Fields - Non-Public
-
-    private readonly IPluginRepositoryService<TMeta> _repoService;
 
     private readonly NuGetFramework                        _currentFramework;
     private readonly PluginManagerLogger                   _logger = new PluginManagerLogger();
@@ -78,7 +75,6 @@ namespace PluginManager.PackageManager
                                 DirectoryPath                             pluginHomeDirPath,
                                 DirectoryPath                             packageDirPath,
                                 FilePath                                  configFilePath,
-                                IPluginRepositoryService<TMeta>           repoService,
                                 Func<ISettings, SourceRepositoryProvider> providerCreator = null)
     {
       pluginDirPath  = pluginDirPath.Collapse();
@@ -90,8 +86,8 @@ namespace PluginManager.PackageManager
       if (packageDirPath.EnsureExists() == false)
         throw new ArgumentException($"Package path {packageDirPath.FullPath} doesn't exist and couldn't be created.");
 
-      if (configFilePath.Root.Exists() == false)
-        throw new ArgumentException($"Config's root directory {configFilePath.Root.FullPath} doesn't exist and couldn't be created.");
+      if (configFilePath.Directory.Exists() == false)
+        throw new ArgumentException($"Config file's directory {configFilePath.Directory.FullPath} doesn't exist and couldn't be created.");
 
       var packageCacheTask = NuGetInstalledPluginRepository<TMeta>.LoadAsync(configFilePath, pluginHomeDirPath);
       var settings         = Settings.LoadDefaultSettings(packageDirPath.FullPath, null, new NuGetMachineWideSettings());
@@ -106,8 +102,6 @@ namespace PluginManager.PackageManager
         settings,
         _currentFramework
       );
-
-      _repoService = repoService;
     }
 
     #endregion
@@ -202,7 +196,7 @@ namespace PluginManager.PackageManager
 
       pluginAssemblies = plugin.GetReferencedAssembliesFilePaths(project, targetFramework ?? _currentFramework);
       dependenciesAssemblies =
-        plugin.Dependencies.SelectMany(i => i.GetReferencedAssembliesFilePaths(project, targetFramework ?? _currentFramework));
+        plugin.Dependencies.Values.SelectMany(i => i.GetReferencedAssembliesFilePaths(project, targetFramework ?? _currentFramework));
     }
 
     public Task<bool> UninstallAsync(LocalPluginPackage<TMeta> pluginPkg,
@@ -236,6 +230,77 @@ namespace PluginManager.PackageManager
       return true;
     }
 
+    /// <summary>
+    ///   Installs the latest online version of package <paramref name="onlinePackage" />.
+    ///   Package's version and metadata will be derived from
+    ///   <paramref name="onlinePackage.LatestOnlineVersion" /> and
+    ///   <paramref name="onlinePackage.Metadata" />. Package's data, and metadata will be saved to
+    ///   the package json configuration file.
+    /// </summary>
+    /// <param name="onlinePackage">The online package to install</param>
+    /// <param name="framework">Which .NET framework should the package be compatible with</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Success of operation</returns>
+    /// <exception cref="ArgumentException"><paramref name="onlinePackage" /> is already installed</exception>
+    public Task<bool> InstallAsync(
+      OnlinePluginPackage<TMeta> onlinePackage,
+      NuGetFramework             framework         = null,
+      CancellationToken          cancellationToken = default)
+    {
+      return InstallAsync(
+        onlinePackage,
+        onlinePackage?.LatestOnlineVersion,
+        framework,
+        cancellationToken);
+    }
+
+    /// <summary>
+    ///   Installs package <paramref name="onlinePackage" /> version
+    ///   <paramref name="onlineVersion" />. Package data, and
+    ///   <paramref name="onlinePackage.Metadata" /> will be saved to the package json configuration
+    ///   file.
+    /// </summary>
+    /// <param name="onlinePackage">The online package to install</param>
+    /// <param name="onlineVersion">The version of the package to install</param>
+    /// <param name="framework">Which .NET framework should the package be compatible with</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Success of operation</returns>
+    /// <exception cref="ArgumentException"><paramref name="onlinePackage" /> is already installed</exception>
+    public Task<bool> InstallAsync(
+      OnlinePluginPackage<TMeta> onlinePackage,
+      NuGetVersion               onlineVersion     = null,
+      NuGetFramework             framework         = null,
+      CancellationToken          cancellationToken = default)
+    {
+      if (onlinePackage == null)
+        throw new ArgumentNullException(nameof(onlinePackage));
+
+      return InstallAsync(
+        onlinePackage.Id,
+        onlinePackage.Metadata,
+        new VersionRange(onlineVersion, true, onlineVersion, true),
+        true,
+        framework,
+        cancellationToken);
+    }
+
+    /// <summary>
+    ///   Installs the latest version of package <paramref name="packageId" /> that matches
+    ///   <paramref name="versionRange" />. Package data, and <paramref name="metadata" /> will be
+    ///   saved to the package json configuration file. If plugin already exists try to update its
+    ///   version.
+    /// </summary>
+    /// <param name="packageId">The package name</param>
+    /// <param name="metadata">Optional metadata to associate</param>
+    /// <param name="versionRange">The version constraint</param>
+    /// <param name="allowPrereleaseVersions">
+    ///   Whether to include pre-release version in the search
+    ///   results
+    /// </param>
+    /// <param name="framework">Which .NET framework should the package be compatible with</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Success of operation</returns>
+    /// <exception cref="ArgumentException"><paramref name="packageId" /> contains only white spaces</exception>
     public async Task<bool> InstallAsync(
       string            packageId,
       TMeta             metadata                = default,
@@ -244,6 +309,12 @@ namespace PluginManager.PackageManager
       NuGetFramework    framework               = null,
       CancellationToken cancellationToken       = default)
     {
+      if (packageId == null)
+        throw new ArgumentNullException(nameof(packageId));
+
+      if (string.IsNullOrWhiteSpace(packageId))
+        throw new ArgumentException($"{nameof(packageId)} contains only white spaces");
+
       try
       {
         var version = (await SearchMatchingVersion(packageId, versionRange, framework, cancellationToken).ConfigureAwait(false)).Max();
@@ -259,7 +330,7 @@ namespace PluginManager.PackageManager
         // If plugin exact version already exists, abort
         if (_pluginRepo.IsPluginInstalled(packageIdentity, _solution))
         {
-          LogTo.Information("Already got plugin {packageId} {version.ToNormalizedString()}");
+          LogTo.Information($"Plugin {packageId} is already installed with version {version.ToNormalizedString()}");
 
           return true;
         }
@@ -279,6 +350,10 @@ namespace PluginManager.PackageManager
           allowPrereleaseVersions,
           cancellationToken);
       }
+      catch (InvalidOperationException ex1) when (ex1.InnerException is OperationCanceledException)
+      {
+        throw;
+      }
       catch (Exception ex)
       {
         LogTo.Error(
@@ -288,71 +363,205 @@ namespace PluginManager.PackageManager
       }
     }
 
-    public Task<IEnumerable<PluginPackage<TMeta>>> Search(
-      string            searchTerm,
-      bool              enablePreRelease  = false,
-      CancellationToken cancellationToken = default)
+    /// <summary>
+    ///   Attempts to update plugin <paramref name="pluginPackage" />. If no
+    ///   <paramref name="version" /> is specified, the latest available version will be installed.
+    /// </summary>
+    /// <param name="pluginPackage">The plugin package to update</param>
+    /// <param name="version">Optional version to install</param>
+    /// <param name="allowPrereleaseVersions">Whether to include pre-release versions</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Success of operation</returns>
+    /// <exception cref="ArgumentException"><paramref name="pluginPackage" /> cannot be a development plugin</exception>
+    /// <exception cref="ArgumentException">Plugin <paramref name="pluginPackage" /> is not installed</exception>
+    /// <exception cref="ArgumentNullException"></exception>
+    public Task<bool> UpdateAsync(
+      LocalPluginPackage<TMeta> pluginPackage,
+      NuGetVersion              version                 = null,
+      bool                      allowPrereleaseVersions = false,
+      CancellationToken         cancellationToken       = default)
     {
-      return Search(searchTerm, _sourceRepositories, enablePreRelease, cancellationToken);
+      if (pluginPackage is LocalDevPluginPackage<TMeta>)
+        throw new ArgumentException($"{nameof(pluginPackage)} cannot be a development plugin");
+
+      return UpdateAsync(pluginPackage.Id, version, allowPrereleaseVersions, cancellationToken);
+    }
+
+    /// <summary>
+    ///   Attempts to update plugin <paramref name="packageId" />. If no
+    ///   <paramref name="version" /> is specified, the latest available version will be installed.
+    /// </summary>
+    /// <param name="packageId">The plugin package id to update</param>
+    /// <param name="version">Optional version to install</param>
+    /// <param name="allowPrereleaseVersions">Whether to include pre-release versions</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Success of operation</returns>
+    /// <exception cref="ArgumentException"><paramref name="packageId" /> is empty</exception>
+    /// <exception cref="ArgumentException">Plugin <paramref name="packageId" /> is not installed</exception>
+    /// <exception cref="ArgumentNullException"></exception>
+    public async Task<bool> UpdateAsync(
+      string            packageId,
+      NuGetVersion      version                 = null,
+      bool              allowPrereleaseVersions = false,
+      CancellationToken cancellationToken       = default)
+    {
+      if (packageId == null)
+        throw new ArgumentNullException(nameof(packageId));
+
+      if (string.IsNullOrWhiteSpace(packageId))
+        throw new ArgumentException($"{nameof(packageId)} contains only white spaces");
+
+      var pluginPackage = FindInstalledPluginById(packageId);
+
+      if (pluginPackage == null)
+        throw new ArgumentException($"Package {packageId} is not installed");
+
+      //if (version != null && version <= pluginPackage.Identity.Version)
+      //  throw new ArgumentException(
+      //    $"Update version ({version.ToNormalizedString()}) needs to be higher than plugin's version ({pluginPackage.Version})");
+
+      // If plugin exact version already exists, abort
+      if (pluginPackage.Identity.Version == version)
+      {
+        LogTo.Information($"Plugin {packageId} is already installed with version {version.ToNormalizedString()}");
+
+        return true;
+      }
+
+      LogTo.Trace($"Update requested for plugin {packageId} {pluginPackage.Version} -> {version.ToNormalizedString()}");
+
+      return await _solution.UpdatePluginAsync(
+        packageId,
+        version,
+        allowPrereleaseVersions,
+        cancellationToken);
     }
 
     public Task<IEnumerable<PluginPackage<TMeta>>> Search(
-      string                    searchTerm,
-      ISourceRepositoryProvider provider,
-      bool                      enablePreRelease  = false,
-      CancellationToken         cancellationToken = default)
+      string                             searchTerm,
+      bool                               enablePreRelease           = false,
+      Func<string, TMeta>                getMetaFromPackageNameFunc = null,
+      Func<IPackageSearchMetadata, bool> filterSearchResultFunc     = null,
+      CancellationToken                  cancellationToken          = default)
     {
-      return Search(searchTerm, provider.GetRepositories(), enablePreRelease, cancellationToken);
+      if (searchTerm == null)
+        throw new ArgumentNullException(nameof(searchTerm));
+
+      return Search(searchTerm,
+                    _sourceRepositories,
+                    enablePreRelease,
+                    getMetaFromPackageNameFunc,
+                    filterSearchResultFunc,
+                    cancellationToken);
+    }
+
+    public Task<IEnumerable<PluginPackage<TMeta>>> Search(
+      string                             searchTerm,
+      ISourceRepositoryProvider          provider,
+      bool                               enablePreRelease           = false,
+      Func<string, TMeta>                getMetaFromPackageNameFunc = null,
+      Func<IPackageSearchMetadata, bool> filterSearchResultFunc     = null,
+      CancellationToken                  cancellationToken          = default)
+    {
+      if (searchTerm == null)
+        throw new ArgumentNullException(nameof(searchTerm));
+
+      if (provider == null)
+        throw new ArgumentNullException(nameof(provider));
+
+      return Search(searchTerm,
+                    provider.GetRepositories(),
+                    enablePreRelease,
+                    getMetaFromPackageNameFunc,
+                    filterSearchResultFunc,
+                    cancellationToken);
     }
 
     public async Task<IEnumerable<PluginPackage<TMeta>>> Search(
-      string                        searchTerm,
-      IEnumerable<SourceRepository> repositories,
-      bool                          enablePreRelease  = false,
-      CancellationToken             cancellationToken = default)
+      string                             searchTerm,
+      IEnumerable<SourceRepository>      repositories,
+      bool                               enablePreRelease           = false,
+      Func<string, TMeta>                getMetaFromPackageNameFunc = null,
+      Func<IPackageSearchMetadata, bool> filterSearchResultFunc     = null,
+      CancellationToken                  cancellationToken          = default)
     {
-      var tasks = repositories.Select(r => Search(searchTerm, r, enablePreRelease, cancellationToken));
+      if (searchTerm == null)
+        throw new ArgumentNullException(nameof(searchTerm));
+
+      if (repositories == null)
+        throw new ArgumentNullException(nameof(repositories));
+
+      var tasks = repositories.Select(
+        r => Search(searchTerm,
+                    r,
+                    enablePreRelease,
+                    getMetaFromPackageNameFunc,
+                    filterSearchResultFunc,
+                    cancellationToken)
+      );
 
       return (await Task.WhenAll(tasks)).SelectMany(a => a);
     }
 
     public async Task<List<PluginPackage<TMeta>>> Search(
-      string            searchTerm,
-      SourceRepository  sourceRepository,
-      bool              enablePreRelease  = false,
-      CancellationToken cancellationToken = default)
+      string                             searchTerm,
+      SourceRepository                   sourceRepository,
+      bool                               enablePreRelease           = false,
+      Func<string, TMeta>                getMetaFromPackageNameFunc = null,
+      Func<IPackageSearchMetadata, bool> filterSearchResultFunc     = null,
+      CancellationToken                  cancellationToken          = default)
     {
-      var searchPkgs   = await _repoService.ListPlugins();
+      if (searchTerm == null)
+        throw new ArgumentNullException(nameof(searchTerm));
+
+      if (sourceRepository == null)
+        throw new ArgumentNullException(nameof(sourceRepository));
+
+      TMeta GetDefaultMeta(string _)
+      {
+        return default;
+      }
+
+      getMetaFromPackageNameFunc ??= GetDefaultMeta;
+
       var pkgSearchRes = await sourceRepository.GetResourceAsync<PackageSearchResource>(cancellationToken);
 
       // Match all online plugins with those listed in pluginMetadatas
-      var onlinePkgs = await pkgSearchRes.SearchAsync(
+      var onlinePkgs = (await pkgSearchRes.SearchAsync(
         searchTerm,
         new SearchFilter(enablePreRelease),
-        0, 500,
+        0, 200,
         _logger,
-        cancellationToken);
+        cancellationToken)).ToList();
 
-      onlinePkgs = onlinePkgs.Where(ps => searchPkgs.ContainsKey(ps.Identity.Id)).ToList();
+      if (filterSearchResultFunc != null)
+        onlinePkgs = onlinePkgs.Where(filterSearchResultFunc)
+                               .ToList();
+
+      // Fetch all available versions
+      var pkgVersionDownloadTasks = onlinePkgs.ToDictionary(pkg => pkg, pkg => pkg.GetVersionsAsync());
+
+      await Task.WhenAll(pkgVersionDownloadTasks.Values);
 
       // Match local packages with online ones
-      var localPkgs = GetInstalledPlugins().ToDictionary<LocalPluginPackage<TMeta>, string>(k => k.Identity.Id);
+      var localPkgs = GetInstalledPlugins().ToDictionary(k => k.Identity.Id);
 
-      PluginPackage<TMeta> CreatePackage(IGrouping<string, IPackageSearchMetadata> gsr)
+      PluginPackage<TMeta> CreatePackage(IPackageSearchMetadata sr)
       {
-        if (localPkgs.ContainsKey(gsr.Key))
-        {
-          var localPkg = localPkgs[gsr.Key];
-          localPkg.SetOnlineVersions(gsr);
+        var nuGetVersions =
+          pkgVersionDownloadTasks.SafeGet(sr)?.Result?.ToList()
+          ?? new List<VersionInfo> { new VersionInfo(sr.Identity.Version) };
 
-          return localPkg;
-        }
+        if (!localPkgs.ContainsKey(sr.Identity.Id))
+          return new OnlinePluginPackage<TMeta>(sr.Identity.Id, getMetaFromPackageNameFunc(sr.Identity.Id), nuGetVersions);
 
-        return new OnlinePluginPackage<TMeta>(gsr.Key, searchPkgs[gsr.Key], gsr);
+        var localPkg = localPkgs[sr.Identity.Id];
+        localPkg.SetOnlineVersions(nuGetVersions);
+
+        return localPkg;
       }
 
-      return onlinePkgs.GroupBy(sr => sr.Identity.Id)
-                       .Select(CreatePackage)
+      return onlinePkgs.Select(CreatePackage)
                        .ToList();
     }
 

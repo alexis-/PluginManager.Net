@@ -21,12 +21,15 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 11:59
+// Modified On:  2020/03/04 14:52
 // Modified By:  Alexis
 
 #endregion
 
 
+
+
+#pragma warning disable 1591
 
 
 using System;
@@ -36,6 +39,10 @@ using NuGet.Common;
 
 namespace PluginManager.Logger
 {
+  /// <summary>
+  ///   The global logger, used by Anotar.Custom (<see cref="LoggerFactory" />) and NuGet's
+  ///   logger
+  /// </summary>
   [EditorBrowsable(EditorBrowsableState.Never)]
   public class PluginManagerLogger : ILogger, ILogAdapter
   {

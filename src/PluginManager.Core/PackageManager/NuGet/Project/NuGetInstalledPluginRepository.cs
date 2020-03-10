@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/24 17:23
+// Modified On:  2020/03/09 17:26
 // Modified By:  Alexis
 
 #endregion
@@ -38,12 +38,17 @@ using Anotar.Custom;
 using Extensions.System.IO;
 using Newtonsoft.Json;
 using NuGet.Packaging.Core;
+using NuGet.Versioning;
 using PluginManager.Extensions;
 using PluginManager.PackageManager.Models;
 
+// Original from: https://github.com/Wyamio/Wyam/ Copyright (c) 2014 Dave Glick
 namespace PluginManager.PackageManager.NuGet.Project
 {
-  /// <summary>Original from: https://github.com/Wyamio/Wyam/ Copyright (c) 2014 Dave Glick</summary>
+  /// <summary>
+  ///   Manages the list of plugins and their dependencies and stores it in .json
+  ///   configuration file.
+  /// </summary>
   [JsonObject(MemberSerialization.OptIn)]
   internal class NuGetInstalledPluginRepository<TMeta> : IDisposable
   {
@@ -56,12 +61,26 @@ namespace PluginManager.PackageManager.NuGet.Project
     protected Dictionary<PackageIdentity, LocalPluginPackage<TMeta>>
       _identityPluginMap = new Dictionary<PackageIdentity, LocalPluginPackage<TMeta>>();
 
-    [JsonProperty(PropertyName = "Plugins")]
-    private IEnumerable<LocalPluginPackage<TMeta>> ConfigPlugins
+    /// <summary>
+    ///   Wrapper around <see cref="_identityPluginMap" /> used solely to store plugins as a
+    ///   list in the .json config. Json.net will first use the getter function of a property to check
+    ///   if it already has instantiated a collection; if it finds one, it will add the deserialized
+    ///   items to it. <see cref="ObjectCreationHandling.Replace" /> tells Json.net to always
+    ///   instantiate a new collection.
+    /// </summary>
+    [JsonProperty(PropertyName = "Plugins", ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    private List<LocalPluginPackage<TMeta>> ConfigPlugins
     {
-      get => _identityPluginMap.Values;
+      get => _identityPluginMap.Values.ToList();
       set => _identityPluginMap = value.ToDictionary(p => p.Identity);
     }
+
+    /// <summary>
+    ///   Packages that have been uninstalled but couldn't be deleted during uninstall. They
+    ///   will be deleted at a later time, see <see cref="NuGetDeleteOnRestartManager{TMeta}" />.
+    /// </summary>
+    [JsonProperty]
+    private List<string> PackageDirectoriesMarkedForDeletion { get; set; }
 
     #endregion
 
@@ -70,7 +89,10 @@ namespace PluginManager.PackageManager.NuGet.Project
 
     #region Constructors
 
-    public NuGetInstalledPluginRepository() { }
+    public NuGetInstalledPluginRepository()
+    {
+      PackageDirectoriesMarkedForDeletion = new List<string>();
+    }
 
     public void Dispose()
     {
@@ -91,7 +113,7 @@ namespace PluginManager.PackageManager.NuGet.Project
     public IEnumerable<LocalPluginPackage<TMeta>> Plugins => _identityPluginMap.Values;
 
     public IEnumerable<NuGetPackage> AllPackages =>
-      _identityPluginMap.Values.Concat(_identityPluginMap.Values.SelectMany(p => p.Dependencies)).Distinct();
+      _identityPluginMap.Values.Concat(_identityPluginMap.Values.SelectMany(p => p.Dependencies.Values)).Distinct();
 
     public bool IsInstalling => _currentlyInstallingPlugin != null && _currentlyInstallingPlugin.CurrentlyInstalling;
 
@@ -102,6 +124,13 @@ namespace PluginManager.PackageManager.NuGet.Project
 
     #region Methods
 
+    /// <summary>
+    ///   Tries to load the <see cref="NuGetInstalledPluginRepository{TMeta}" /> from an
+    ///   existing configuration file. Instantiates a new repository if it fails.
+    /// </summary>
+    /// <param name="solutionFilePath">The configuration file path</param>
+    /// <param name="pluginHomeDir">The root directory underneath which plugins' home are located</param>
+    /// <returns></returns>
     public static async Task<NuGetInstalledPluginRepository<TMeta>> LoadAsync(
       FilePath      solutionFilePath,
       DirectoryPath pluginHomeDir)
@@ -125,6 +154,8 @@ namespace PluginManager.PackageManager.NuGet.Project
       return repo ?? new NuGetInstalledPluginRepository<TMeta> { FilePath = solutionFilePath, _pluginHomeDir = pluginHomeDir };
     }
 
+    /// <summary>Saves the repository to file</summary>
+    /// <returns></returns>
     public async Task<bool> SaveAsync()
     {
       try
@@ -141,11 +172,26 @@ namespace PluginManager.PackageManager.NuGet.Project
       return true;
     }
 
+    /// <summary>
+    ///   Searches for a <see cref="LocalPluginPackage{TMeta}" /> named
+    ///   <paramref name="packageId" />. This search doesn't include dependencies.
+    /// </summary>
+    /// <param name="packageId">The plugin's package id</param>
+    /// <returns>
+    ///   The <see cref="LocalPluginPackage{TMeta}" /> if it is found or
+    ///   <see langword="null" />
+    /// </returns>
     public LocalPluginPackage<TMeta> FindPluginById(string packageId)
     {
       return _identityPluginMap.FirstOrDefault(kv => kv.Key.Id == packageId).Value;
     }
 
+    /// <summary>
+    ///   Searches for plugins' <see cref="LocalPluginPackage{TMeta}" /> or a dependencies'
+    ///   <see cref="NuGetPackage" /> named <paramref name="packageId" />
+    /// </summary>
+    /// <param name="packageId">The plugin's or dependency's package id</param>
+    /// <returns>All <see cref="NuGetPackage" /> matching <paramref name="packageId" /></returns>
     public IEnumerable<NuGetPackage> FindPackageById(string packageId)
     {
       return AllPackages.Where(p => p.Id == packageId);
@@ -158,12 +204,12 @@ namespace PluginManager.PackageManager.NuGet.Project
       if (package == null)
         return null;
 
-      var ret = new List<NuGetPackage>()
+      var ret = new List<NuGetPackage>
       {
         package
       };
 
-      ret.AddRange(package.Dependencies);
+      ret.AddRange(package.Dependencies.Values);
 
       return ret;
     }
@@ -178,6 +224,11 @@ namespace PluginManager.PackageManager.NuGet.Project
       return _identityPluginMap.ContainsKey(pluginIdentity);
     }
 
+    public IEnumerable<LocalPluginPackage<TMeta>> GetPluginsDependingOn(PackageIdentity dependencyPackageIdentity)
+    {
+      return _identityPluginMap.Values.Where(p => p.Dependencies.ContainsKey(dependencyPackageIdentity));
+    }
+
     /// <summary>
     ///   Verifies that a package has been previously installed as well as currently existing
     ///   locally with all dependencies.
@@ -190,7 +241,7 @@ namespace PluginManager.PackageManager.NuGet.Project
       if (plugin == null)
         return false;
 
-      var project = solution.GetPluginProject((LocalPluginPackage<TMeta>)plugin);
+      var project = solution.GetPluginProject(plugin);
 
       if (project == null)
         throw new InvalidOperationException($"Could not acquire project for existing plugin {plugin.Id}.");
@@ -198,15 +249,19 @@ namespace PluginManager.PackageManager.NuGet.Project
       return plugin.PackageAndDependenciesExist(project.CreatePackageManager());
     }
 
+    /// <summary>Add a new plugin</summary>
+    /// <param name="identity"></param>
+    /// <param name="metadata"></param>
+    /// <returns></returns>
     public NuGetPluginInstallSession AddPlugin(PackageIdentity identity,
                                                TMeta           metadata = default)
     {
-      if (IsInstalling)
-      {
-        _currentlyInstallingPlugin.Plugin.AddDependency(identity);
+      if (_identityPluginMap.ContainsKey(identity))
+        throw new ArgumentException(
+          $"Plugin {identity.Id} {identity.Version.ToNormalizedString()} already exists in Plugin Repository for installing");
 
-        return null;
-      }
+      if (IsInstalling)
+        throw new InvalidOperationException($"{nameof(AddPlugin)} cannot be called while a plugin is already being installed.");
 
       // This is a new top-level installation, so add to the root
       var pkg = new LocalPluginPackage<TMeta>(identity, _pluginHomeDir, metadata);
@@ -216,9 +271,35 @@ namespace PluginManager.PackageManager.NuGet.Project
       return _currentlyInstallingPlugin;
     }
 
+    public void UpdatePlugin(string packageId, NuGetVersion newVersion)
+    {
+      var newPkgIdentity = new PackageIdentity(packageId, newVersion);
+      var oldPkgIdentity = _identityPluginMap.Keys.FirstOrDefault(id => id.Id == packageId);
+
+      if (_identityPluginMap.ContainsKey(newPkgIdentity))
+        throw new ArgumentException(
+          $"Plugin {packageId} {newVersion.ToNormalizedString()} already exists in Plugin Repository for updating");
+
+      if (oldPkgIdentity == null || _identityPluginMap.TryGetValue(oldPkgIdentity, out var pluginPkg) == false)
+        throw new ArgumentException($"No such plugin {packageId} in Plugin Repository for updating");
+
+      RemovePlugin(oldPkgIdentity);
+      _identityPluginMap[newPkgIdentity] = pluginPkg;
+    }
+
     public bool RemovePlugin(PackageIdentity packageIdentity)
     {
       return _identityPluginMap.Remove(packageIdentity);
+    }
+
+    public IReadOnlyList<string> GetPackageDirectoriesMarkedForDeletion()
+    {
+      return PackageDirectoriesMarkedForDeletion;
+    }
+
+    public void AddPackageDirectoryForDeletion(string directory)
+    {
+      PackageDirectoriesMarkedForDeletion.Add(directory);
     }
 
     #endregion
@@ -226,6 +307,10 @@ namespace PluginManager.PackageManager.NuGet.Project
 
 
 
+    /// <summary>
+    ///   Temporary session for installing. The plugin will only be added to the repository if
+    ///   the install operation is successful, see <see cref="NuGetPluginInstallSession.Success" />.
+    /// </summary>
     public class NuGetPluginInstallSession : IDisposable
     {
       #region Properties & Fields - Non-Public
