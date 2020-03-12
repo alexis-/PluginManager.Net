@@ -108,6 +108,7 @@
     <None Include="install.ps1" />
     <None Include="packages.config" />
     <None Include="PluginHost.nuspec" />
+    <None Include="PluginManager.PluginHost.targets" />
     <None Include="Properties\app.manifest" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

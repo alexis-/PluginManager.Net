@@ -80,9 +80,22 @@ namespace PluginManager.PackageManager.Models
 
 
     #region Properties & Fields - Public
+    
+    /// <summary>
+    ///   Wrapper around <see cref="Dependencies" /> used solely to store dependencies as a
+    ///   list in the .json config. Json.net will first use the getter function of a property to check
+    ///   if it already has instantiated a collection; if it finds one, it will add the deserialized
+    ///   items to it. <see cref="ObjectCreationHandling.Replace" /> tells Json.net to always
+    ///   instantiate a new collection.
+    /// </summary>
+    [JsonProperty(PropertyName = "Dependencies", ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    private List<NuGetPackage> ConfigDependencies
+    {
+      get => Dependencies.Values.ToList();
+      set => Dependencies = value.ToDictionary(p => p.Identity);
+    }
 
     /// <summary>All the <see cref="NuGetPackage" /> that this plugin depends on to run its program</summary>
-    [JsonProperty]
     public Dictionary<PackageIdentity, NuGetPackage> Dependencies { get; private set; } = new Dictionary<PackageIdentity, NuGetPackage>();
 
     /// <summary>

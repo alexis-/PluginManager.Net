@@ -25,5 +25,6 @@
   <files>
     <file src="PluginHost.exe" target="content\net472" />
     <file src="..\..\install.ps1" target="tools\install.ps1" />
+    <file src="..\..\PluginManager.PluginHost.targets" target="build" />
   </files>
 </package>
