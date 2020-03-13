@@ -147,6 +147,13 @@ namespace PluginManager.PackageManager
     /// </summary>
     /// <param name="repository">The package source to add.</param>
     public SourceRepository AddRepository(string repository) => _sourceRepositories.CreateRepository(repository);
+    
+    /// <summary>Saves the local plugin repository state to file</summary>
+    /// <returns>Success of operation</returns>
+    public Task<bool> SaveConfigAsync()
+    {
+      return _pluginRepo.SaveAsync();
+    }
 
     /// <summary>Gets all installed versions of package <paramref name="packageId" />, if any.</summary>
     /// <param name="packageId">The package identifier.</param>

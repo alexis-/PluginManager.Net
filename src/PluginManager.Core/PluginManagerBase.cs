@@ -21,7 +21,7 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/27 00:05
+// Modified On:  2020/03/13 00:19
 // Modified By:  Alexis
 
 #endregion
@@ -78,10 +78,19 @@ namespace PluginManager
   {
     #region Properties & Fields - Non-Public
 
-    protected ObservableCollection<TPluginInstance>       AllPluginsInternal  { get; }
-    protected ConcurrentDictionary<string, string>        InterfaceChannelMap { get; }
-    protected ConcurrentDictionary<Guid, TPluginInstance> RunningPluginMap    { get; }
+    /// <summary>All plugins currently loaded</summary>
+    protected ObservableCollection<TPluginInstance> AllPluginsInternal { get; }
 
+    /// <summary>
+    ///   Maps plugins' published qualified type names to the channel name on which the service
+    ///   is published
+    /// </summary>
+    protected ConcurrentDictionary<string, string> InterfaceChannelMap { get; }
+
+    /// <summary>Maps running plugins' session GUID to their plugin instance</summary>
+    protected ConcurrentDictionary<Guid, TPluginInstance> RunningPluginMap { get; }
+
+    /// <summary>Whether the Plugin Manager has been disposed</summary>
     protected bool IsDisposed { get; private set; }
 
     #endregion
@@ -132,7 +141,7 @@ namespace PluginManager
 
     #region Properties & Fields - Public
 
-    /// <summary>All plugins currently loaded</summary>
+    /// <summary>Read-only version collection of all plugins currently loaded</summary>
     public ReadOnlyObservableCollection<TPluginInstance> AllPlugins { get; }
 
     #endregion
@@ -268,13 +277,11 @@ namespace PluginManager
     }
 
     /// <summary>
-    /// Called after the plugin process has been started, and before confirming connection from it.
+    ///   Called after the plugin process has been started, and before confirming connection
+    ///   from it.
     /// </summary>
     /// <param name="pluginInstance">The plugin that has been started</param>
-    protected virtual void OnPluginStarted(TPluginInstance pluginInstance)
-    {
-      
-    }
+    protected virtual void OnPluginStarted(TPluginInstance pluginInstance) { }
 
     /// <summary>
     ///   Called after the plugin process has been started, and connection has been made with
@@ -334,8 +341,19 @@ namespace PluginManager
 
       RunningPluginMap.TryRemove(pluginInstance.Guid, out _);
 
-      pluginInstance.OnStopped();
+      pluginInstance.OnStopped(crashed);
+
+      if (crashed)
+        OnPluginCrashed(pluginInstance);
     }
+
+    /// <summary>
+    ///   Called during <see cref="OnPluginStopped(TPluginInstance)" /> and after
+    ///   <see cref="IPluginInstance{TParent, TMeta, IPlugin}.OnStopped" />. Calling base method is
+    ///   unnecessary.
+    /// </summary>
+    /// <param name="pluginInstance">The crashed plugin's instance</param>
+    protected virtual void OnPluginCrashed(TPluginInstance pluginInstance) { }
 
     #endregion
   }

@@ -122,6 +122,7 @@ namespace PluginManager.Contracts
     ///   <see
     ///     cref="PluginManagerBase{TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin}.StartPlugin(TPluginInstance)" />
     /// </summary>
-    void OnStopped();
+    /// <param name="crashed">Whether the plugin stopped with an error Exit Code</param>
+    void OnStopped(bool crashed);
   }
 }

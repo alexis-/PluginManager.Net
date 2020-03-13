@@ -172,8 +172,9 @@ namespace PluginManager.Models
       Status = PluginStatus.Stopping;
     }
 
+    /// <param name="crashed"></param>
     /// <inheritdoc />
-    public virtual void OnStopped()
+    public virtual void OnStopped(bool crashed)
     {
       Process = null;
       Plugin  = default;
