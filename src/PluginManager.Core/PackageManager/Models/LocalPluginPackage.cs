@@ -182,6 +182,9 @@ namespace PluginManager.PackageManager.Models
     /// <returns>The removed <see cref="NuGetPackage"/></returns>
     public virtual NuGetPackage RemoveDependency(PackageIdentity packageIdentity)
     {
+      if (packageIdentity.GetType() != typeof(PackageIdentity))
+        packageIdentity = new PackageIdentity(packageIdentity.Id, packageIdentity.Version);
+
       if (Dependencies.TryGetValue(packageIdentity, out var dependency))
       {
         Dependencies.Remove(packageIdentity);

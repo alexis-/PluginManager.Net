@@ -33,6 +33,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Anotar.Custom;
 using PluginManager.Contracts;
@@ -172,6 +173,8 @@ namespace PluginManager
 
       if (startEnabledPlugins)
         await StartPlugins();
+
+      PropertyChangedNotificationInterceptor.GlobalSynchronizationContext = UISynchronizationContext;
 
       LogTo.Debug($"Initializing {GetType().Name}... Done");
     }

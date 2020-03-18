@@ -181,7 +181,10 @@ namespace PluginManager.PackageManager.NuGet
     /// <param name="propName"></param>
     protected void OnPropertyChanged(string propName)
     {
-      PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
+      PropertyChangedNotificationInterceptor.Intercept(
+        this,
+        () => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName)),
+        propName, null, null);
     }
 
     /// <summary>

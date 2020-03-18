@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" InitialTargets="MSBuildToolsReadSuo">
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.props" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.props')" />
   <Import Project="..\..\packages\GitLink.3.1.0\build\GitLink.props" Condition="Exists('..\..\packages\GitLink.3.1.0\build\GitLink.props')" />
-  <Import Project="..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props" Condition="Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props')" />
   <Import Project="..\..\packages\Anotar.Custom.Fody.5.1.0\build\Anotar.Custom.Fody.props" Condition="Exists('..\..\packages\Anotar.Custom.Fody.5.1.0\build\Anotar.Custom.Fody.props')" />
   <Import Project="..\..\packages\PropertyChanged.Fody.3.2.6\build\PropertyChanged.Fody.props" Condition="Exists('..\..\packages\PropertyChanged.Fody.3.2.6\build\PropertyChanged.Fody.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -179,6 +179,7 @@
     <Compile Include="PackageManager\Models\LocalPluginPackage.cs" />
     <Compile Include="PackageManager\Models\OnlinePluginPackage.cs" />
     <Compile Include="PackageManager\Models\PluginPackage.cs" />
+    <Compile Include="PropertyChangedNotificationInterceptor.cs" />
     <Compile Include="Services\DefaultPluginRepositoryService.cs" />
     <Compile Include="Logger\PluginManagerLogger.cs" />
     <Compile Include="PackageManager\NuGet\NuGetMachineWideSettings.cs" />
@@ -221,10 +222,10 @@
     <Error Condition="!Exists('..\..\packages\Fody.6.1.1\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Fody.6.1.1\build\Fody.targets'))" />
     <Error Condition="!Exists('..\..\packages\PropertyChanged.Fody.3.2.6\build\PropertyChanged.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\PropertyChanged.Fody.3.2.6\build\PropertyChanged.Fody.props'))" />
     <Error Condition="!Exists('..\..\packages\Anotar.Custom.Fody.5.1.0\build\Anotar.Custom.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Anotar.Custom.Fody.5.1.0\build\Anotar.Custom.Fody.props'))" />
-    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.props'))" />
-    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets'))" />
     <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.props'))" />
     <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.targets'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.props'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.targets'))" />
   </Target>
   <Target Name="NuPack" AfterTargets="Build" Condition=" $(RunNuPack) == 'True' ">
     <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
@@ -239,6 +240,6 @@
   </Target>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\..\packages\Fody.6.1.1\build\Fody.targets" Condition="Exists('..\..\packages\Fody.6.1.1\build\Fody.targets')" />
-  <Import Project="..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets" Condition="Exists('..\..\packages\MSBuild.Tools.0.1.5\build\MSBuild.Tools.targets')" />
   <Import Project="..\..\packages\GitLink.3.1.0\build\GitLink.targets" Condition="Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" />
+  <Import Project="..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.targets" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.40\build\MSBuild.Tools.targets')" />
 </Project>
