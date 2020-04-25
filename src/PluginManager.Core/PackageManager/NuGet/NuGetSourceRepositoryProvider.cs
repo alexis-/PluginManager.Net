@@ -33,6 +33,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using NuGet.Configuration;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
@@ -67,13 +68,10 @@ namespace PluginManager.PackageManager.NuGet
   ///   of default source repositories. Original from: https://github.com/Wyamio/Wyam/ Copyright (c)
   ///   2014 Dave Glick
   /// </summary>
-  public class SourceRepositoryProvider : ISourceRepositoryProvider
+  public class SourceRepositoryProvider : ConcurrentDictionary<PackageSource, SourceRepository>, ISourceRepositoryProvider
   {
     #region Properties & Fields - Non-Public
     
-    private readonly ConcurrentDictionary<PackageSource, SourceRepository> _repositoryCache
-      = new ConcurrentDictionary<PackageSource, SourceRepository>();
-
     private readonly List<Lazy<INuGetResourceProvider>> _resourceProviders;
 
     #endregion
@@ -83,6 +81,11 @@ namespace PluginManager.PackageManager.NuGet
 
     #region Constructors
 
+    /// <summary>
+    /// New instance
+    /// </summary>
+    /// <param name="settings"></param>
+    /// <param name="defaultSources"></param>
     public SourceRepositoryProvider(ISettings           settings,
                                     IEnumerable<string> defaultSources = null)
     {
@@ -93,9 +96,11 @@ namespace PluginManager.PackageManager.NuGet
       _resourceProviders = new List<Lazy<INuGetResourceProvider>>();
       _resourceProviders.AddRange(Repository.Provider.GetCoreV3());
 
-      if (defaultSources != null)
-        foreach (var src in defaultSources)
-          CreateRepository(src);
+      if (defaultSources == null)
+        return;
+
+      foreach (var src in defaultSources.Distinct())
+        CreateRepository(src);
     }
 
     #endregion
@@ -105,6 +110,7 @@ namespace PluginManager.PackageManager.NuGet
 
     #region Properties Impl - Public
 
+    /// <inheritdoc />
     public IPackageSourceProvider PackageSourceProvider { get; }
 
     #endregion
@@ -120,10 +126,10 @@ namespace PluginManager.PackageManager.NuGet
     /// <summary>Creates or gets a non-default source repository by PackageSource.</summary>
     public SourceRepository CreateRepository(PackageSource packageSource,
                                              FeedType      feedType) =>
-      _repositoryCache.GetOrAdd(packageSource, x => new SourceRepository(x, _resourceProviders));
+      GetOrAdd(packageSource, x => new SourceRepository(x, _resourceProviders)); // TODO: Act based on feedType ?
 
     /// <summary>Gets all cached repositories.</summary>
-    public IEnumerable<SourceRepository> GetRepositories() => _repositoryCache.Values;
+    public IEnumerable<SourceRepository> GetRepositories() => Values;
 
     #endregion
 

@@ -43,6 +43,9 @@ using PluginManager.Interop.Sys;
 
 namespace PluginManager.Interop.PluginHost
 {
+  /// <summary>
+  /// The plugin host is initialized the PluginHost.exe in its own AppDomain. This is equivalent to the Startup() function for plugins
+  /// </summary>
   public abstract partial class PluginHostBase<ICore> : PerpetualMarshalByRefObject, IDisposable
   {
     #region Properties & Fields - Non-Public
@@ -58,6 +61,14 @@ namespace PluginManager.Interop.PluginHost
 
     #region Constructors
 
+    /// <summary>
+    /// Instantiates a new plugin
+    /// </summary>
+    /// <param name="pluginEntryAssemblyFilePath"></param>
+    /// <param name="sessionGuid"></param>
+    /// <param name="mgrChannelName"></param>
+    /// <param name="mgrProcess"></param>
+    /// <param name="isDev"></param>
     protected PluginHostBase(
       string  pluginEntryAssemblyFilePath,
       Guid    sessionGuid,

@@ -49,6 +49,8 @@ using PluginManager.PackageManager.NuGet;
 
 namespace PluginManager
 {
+  using NuGet.Configuration;
+
   /// <summary>
   ///   The main class for dealing with plugins. Inherit this class to implement
   ///   PluginManager.NET in your project.
@@ -114,12 +116,6 @@ namespace PluginManager
       RunningPluginMap    = new ConcurrentDictionary<Guid, TPluginInstance>();
 
       AllPlugins = new ReadOnlyObservableCollection<TPluginInstance>(AllPluginsInternal);
-      PackageManager = new PluginPackageManager<TMeta>(
-        Locations.PluginDir,
-        Locations.PluginHomeDir,
-        Locations.PluginPackageDir,
-        Locations.PluginConfigFile,
-        s => new NuGetSourceRepositoryProvider(s));
     }
 
     /// <inheritdoc />
@@ -163,18 +159,25 @@ namespace PluginManager
     {
       LogTo.Debug($"Initializing {GetType().Name}");
 
-      if (IpcServer != null || AllPlugins.Any())
+      if (PackageManager != null || IpcServer != null || AllPlugins.Any())
         throw new InvalidProgramException("Initialize called while PluginManagerBase is already initialized");
+
+      PropertyChangedNotificationInterceptor.GlobalSynchronizationContext = UISynchronizationContext;
+      
+      PackageManager = await PluginPackageManager<TMeta>.Create(
+        Locations.PluginDir,
+        Locations.PluginHomeDir,
+        Locations.PluginPackageDir,
+        Locations.PluginConfigFile,
+        CreateSourceRepositoryProvider).ConfigureAwait(false);
 
       StartIpcServer();
       //StartMonitoringPlugins();
 
-      await RefreshPlugins();
+      await RefreshPlugins().ConfigureAwait(false);
 
       if (startEnabledPlugins)
-        await StartPlugins();
-
-      PropertyChangedNotificationInterceptor.GlobalSynchronizationContext = UISynchronizationContext;
+        await StartPlugins().ConfigureAwait(false);
 
       LogTo.Debug($"Initializing {GetType().Name}... Done");
     }
@@ -188,6 +191,16 @@ namespace PluginManager
       StopIpcServer();
 
       LogTo.Debug($"Cleaning up {GetType().Name}... Done");
+    }
+
+    /// <summary>
+    /// Returns a provider which defines which repository are available for downloading NuGet packages
+    /// </summary>
+    /// <param name="s">The NuGet configuration (nuget.config file)</param>
+    /// <returns>The repository provider</returns>
+    public virtual SourceRepositoryProvider CreateSourceRepositoryProvider(ISettings s)
+    {
+      return new NuGetSourceRepositoryProvider(s);
     }
 
     /// <summary>Starts all enabled plugins.</summary>
@@ -285,6 +298,38 @@ namespace PluginManager
     /// </summary>
     /// <param name="pluginInstance">The plugin that has been started</param>
     protected virtual void OnPluginStarted(TPluginInstance pluginInstance) { }
+
+    /// <summary>
+    ///   Called when a plugin failed to start. Use this to add custom handling of errors.
+    /// Make sure to call base method.
+    /// </summary>
+    /// <param name="pluginInstance">The plugin that failed to start</param>
+    /// <param name="reason">The reason why the plugin failed to start</param>
+    /// <param name="errMsg">The error message</param>
+    protected virtual void OnPluginStartFailed(TPluginInstance pluginInstance, PluginStartFailure reason, string errMsg)
+    {
+      switch (reason)
+      {
+        case PluginStartFailure.InteropAssemblyNotFound:
+        case PluginStartFailure.InteropAssemblyInvalidVersionString:
+        case PluginStartFailure.InteropAssemblyOutdated:
+        case PluginStartFailure.ProcessDidNotStart:
+        case PluginStartFailure.ProcessDidNotConnect:
+        case PluginStartFailure.Unknown:
+          LogTo.Warning("OnPluginStartFailed: " + errMsg);
+          break;
+      }
+      
+      using (pluginInstance.Lock.Lock())
+      {
+        if (pluginInstance.Status == PluginStatus.Stopped)
+          return;
+
+        RunningPluginMap.TryRemove(pluginInstance.Guid, out _);
+
+        pluginInstance.OnStopped(false);
+      }
+    }
 
     /// <summary>
     ///   Called after the plugin process has been started, and connection has been made with

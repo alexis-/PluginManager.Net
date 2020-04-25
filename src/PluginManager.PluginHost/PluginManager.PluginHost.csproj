@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props')" />
   <Import Project="..\..\packages\GitLink.3.1.0\build\GitLink.props" Condition="Exists('..\..\packages\GitLink.3.1.0\build\GitLink.props')" />
   <Import Project="..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props" Condition="Exists('..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -122,7 +123,7 @@
   <ItemGroup>
     <Resource Include="FodyWeavers.xml" />
   </ItemGroup>
-  <Target Name="NuPack" AfterTargets="Build" Condition=" $(RunNuPack) == 'True' ">
+  <Target Name="NuPack" AfterTargets="Build" Condition=" '$(RunNuPack)' == 'True' ">
     <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
       <Output TaskParameter="Assemblies" ItemName="myAssemblyInfo" />
     </GetAssemblyIdentity>
@@ -143,8 +144,11 @@
     <Error Condition="!Exists('..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props'))" />
     <Error Condition="!Exists('..\..\packages\Fody.6.1.1\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Fody.6.1.1\build\Fody.targets'))" />
     <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.props'))" />
-    <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.targets'))" /> />
+    <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.targets'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets'))" />
   </Target>
   <Import Project="..\..\packages\Fody.6.1.1\build\Fody.targets" Condition="Exists('..\..\packages\Fody.6.1.1\build\Fody.targets')" />
   <Import Project="..\..\packages\GitLink.3.1.0\build\GitLink.targets" Condition="Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" />
+  <Import Project="..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets')" />
 </Project>

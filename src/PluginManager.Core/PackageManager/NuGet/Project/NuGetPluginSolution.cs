@@ -47,7 +47,7 @@ using PluginManager.PackageManager.Models;
 
 namespace PluginManager.PackageManager.NuGet.Project
 {
-  internal class NuGetPluginSolution<TMeta> : ISolutionManager
+  public class NuGetPluginSolution<TMeta> : ISolutionManager
   {
     #region Properties & Fields - Non-Public
 
@@ -262,12 +262,12 @@ namespace PluginManager.PackageManager.NuGet.Project
       return await _pluginRepo.SaveAsync();
     }
 
-    public NuGetPluginProject<TMeta> GetPluginProject(LocalPluginPackage<TMeta> plugin)
+    internal NuGetPluginProject<TMeta> GetPluginProject(LocalPluginPackage<TMeta> plugin)
     {
       return GetPluginProject(plugin.Id);
     }
 
-    public NuGetPluginProject<TMeta> GetPluginProject(string packageId)
+    internal NuGetPluginProject<TMeta> GetPluginProject(string packageId)
     {
       return _projectMap.SafeGet(packageId);
     }

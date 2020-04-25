@@ -35,6 +35,8 @@ using System.Diagnostics;
 
 namespace PluginManager.Interop.Extensions
 {
+  using System.Reflection;
+
   [EditorBrowsable(EditorBrowsableState.Never)]
   internal static class AssemblyEx
   {
@@ -43,9 +45,9 @@ namespace PluginManager.Interop.Extensions
     public static string GetAssemblyVersion(this Type typeInAssembly)
     {
       var assembly = typeInAssembly.Assembly;
-      var fvi      = FileVersionInfo.GetVersionInfo(assembly.Location);
+      var aivAttr  = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
 
-      return fvi.FileVersion;
+      return aivAttr.InformationalVersion;
     }
 
     public static string GetAssemblyName(this Type typeInAssembly)

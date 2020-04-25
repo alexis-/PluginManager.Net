@@ -136,7 +136,7 @@ namespace PluginManager.PackageManager.Models
       packageName = pluginFilePath.FileNameWithoutExtension;
 
       return new LocalDevPluginPackage<TMeta>(
-        new PackageIdentity(packageName, NuGetVersion.Parse(pluginVersionInfo.FileVersion)),
+        new PackageIdentity(packageName, NuGetVersion.Parse(pluginVersionInfo.ProductVersion)),
         devDir,
         metadataFunc(packageName, pluginVersionInfo)
       );

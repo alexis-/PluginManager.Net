@@ -46,6 +46,8 @@ using PluginManager.Sys.Threading;
 
 namespace PluginManager
 {
+  using NuGet.Versioning;
+
   public abstract partial class PluginManagerBase<TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin>
   {
     #region Constants & Statics
@@ -90,15 +92,16 @@ namespace PluginManager
         }
         
         // Determine the plugin and its dependencies assemblies' information. This includes the assembly which contains the PluginHost type
-        string packageRootFolder = Locations.PluginPackageDir.FullPathWin;
-        List<string> pluginAndDependenciesAssembliesPath = new List<string>();
-        string pluginHostTypeAssemblyName = GetPluginHostTypeAssemblyName(pluginInstance);
-        
+        var packageRootFolder = Locations.PluginPackageDir.FullPathWin;
+        var pluginAndDependenciesAssembliesPath = new List<string>();
+        var pluginHostTypeAssemblyName = GetPluginHostTypeAssemblyName(pluginInstance);
+        var pluginHostTypeMinAssemblyVersion = GetPluginHostTypeAssemblyMinimumVersion(pluginInstance);
+
         if (pluginInstance.IsDevelopment == false)
         {
           using (await PMLock.ReaderLockAsync())
           {
-            List<FilePath> pluginAndDependenciesPackageFilePaths = new List<FilePath>();
+            var pluginAndDependenciesPackageFilePaths = new List<FilePath>();
             var pluginPkg = PackageManager.FindInstalledPluginById(packageName);
 
             if (pluginPkg == null)
@@ -112,10 +115,43 @@ namespace PluginManager
             pluginAndDependenciesPackageFilePaths.AddRange(tmpPluginAssemblies);
             pluginAndDependenciesPackageFilePaths.AddRange(tmpDependenciesAssemblies);
 
-            if (pluginAndDependenciesPackageFilePaths.Any(a => a.FileNameWithoutExtension == pluginHostTypeAssemblyName) == false)
+            var pluginHostTypeAssemblyPath =
+              pluginAndDependenciesPackageFilePaths.FirstOrDefault(a => a.FileNameWithoutExtension == pluginHostTypeAssemblyName);
+
+            if (pluginHostTypeAssemblyPath == null)
             {
-              LogTo.Warning($"Unable to find the PluginHost type's \"{pluginHostTypeAssemblyName}\" dependency assembly's package");
+              OnPluginStartFailed(
+                pluginInstance,
+                PluginStartFailure.InteropAssemblyNotFound,
+                $"{pluginInstance} failed to start: Unable to find the PluginHost type's \"{pluginHostTypeAssemblyName}\" dependency assembly's package");
+
               return false;
+            }
+            
+            // Make sure the assembly version is equal or higher to the required minimum version
+            if (pluginHostTypeMinAssemblyVersion != null)
+            {
+              var pluginHostTypeAssemblyInfo = FileVersionInfo.GetVersionInfo(pluginHostTypeAssemblyPath.FullPath);
+
+              if (NuGetVersion.TryParse(pluginHostTypeAssemblyInfo.ProductVersion, out var pluginHostTypeAssemblyVersion) == false)
+              {
+                OnPluginStartFailed(
+                  pluginInstance,
+                  PluginStartFailure.InteropAssemblyNotFound,
+                  $"{pluginInstance} failed to start: Invalid interop version '{pluginHostTypeAssemblyInfo.ProductVersion}'");
+
+                return false;
+              }
+
+              if (pluginHostTypeAssemblyVersion < pluginHostTypeMinAssemblyVersion)
+              {
+                OnPluginStartFailed(
+                  pluginInstance,
+                  PluginStartFailure.InteropAssemblyNotFound,
+                  $"{pluginInstance} failed to start: Outdated interop version '{pluginHostTypeAssemblyInfo.ProductVersion}'. Either update the plugin, downgrade SMA, or ask the plugin developer to publish a new version to fix the issue.");
+
+                return false;
+              }
             }
 
             foreach (var pkgFilePath in pluginAndDependenciesPackageFilePaths)
@@ -199,7 +235,12 @@ namespace PluginManager
         // Start plugin
         if (pluginInstance.Process.Start() == false)
         {
-          LogTo.Warning($"Failed to start process for {pluginInstance}");
+          
+          OnPluginStartFailed(
+            pluginInstance,
+            PluginStartFailure.ProcessDidNotStart,
+            $"{pluginInstance} failed to start: Failed to start process");
+
           return false;
         }
 
@@ -216,19 +257,26 @@ namespace PluginManager
           }, null);
         };
 
-        if (await pluginInstance.ConnectedEvent.WaitAsync(PluginConnectTimeout))
-          return pluginInstance.Status == PluginStatus.Connected;
+        var connected = await pluginInstance.ConnectedEvent.WaitAsync(PluginConnectTimeout);
+
+        if (connected && pluginInstance.Status == PluginStatus.Connected)
+          return true;
 
         if (pluginInstance.Status == PluginStatus.Stopped)
         {
-          LogTo.Error($"{pluginInstance.Denomination.CapitalizeFirst()} {packageName} stopped unexpectedly.");
+          OnPluginStartFailed(
+            pluginInstance,
+            connected ? PluginStartFailure.ProcessDidNotConnect : PluginStartFailure.Unknown,
+            $"{pluginInstance} failed to start: process stopped unexpectedly.");
+
           pluginInstance.ConnectedEvent.Set();
+
           return false;
         }
       }
       catch (Exception ex)
       {
-        LogTo.Error(ex, $"An error occured while starting {pluginInstance}");
+        LogTo.Error(ex, $"{pluginInstance} failed to start: An unknown exception occured during startup");
         return false;
       }
 
@@ -271,6 +319,11 @@ namespace PluginManager
       return false;
     }
 
+    /// <summary>
+    /// Stops plugin <paramref name="pluginInstance"/>
+    /// </summary>
+    /// <param name="pluginInstance">The plugin to stop</param>
+    /// <returns></returns>
     public async Task<bool> StopPlugin(TPluginInstance pluginInstance)
     {
       try

@@ -53,7 +53,7 @@ namespace PluginManager
     /// <summary>
     /// The package manager instance
     /// </summary>
-    protected PluginPackageManager<TMeta> PackageManager { get; }
+    protected PluginPackageManager<TMeta> PackageManager { get; private set; }
 
     /// <summary>
     /// Synchronizes calls to the Package Manager (e.g. to avoid installing two plugins at the same time)

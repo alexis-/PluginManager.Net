@@ -50,7 +50,7 @@ namespace PluginManager.PackageManager.NuGet.Project
   ///   configuration file.
   /// </summary>
   [JsonObject(MemberSerialization.OptIn)]
-  internal class NuGetInstalledPluginRepository<TMeta> : IDisposable
+  public class NuGetInstalledPluginRepository<TMeta> : IDisposable
   {
     #region Properties & Fields - Non-Public
 

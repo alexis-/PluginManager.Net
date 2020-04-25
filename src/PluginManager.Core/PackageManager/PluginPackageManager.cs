@@ -21,7 +21,8 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/03/09 14:07
+// Created On:   2020/03/29 00:20
+// Modified On:  2020/04/24 02:35
 // Modified By:  Alexis
 
 #endregion
@@ -29,80 +30,67 @@
 
 
 
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using Anotar.Custom;
-using Extensions.System.IO;
-using NuGet.Configuration;
-using NuGet.Frameworks;
-using NuGet.PackageManagement;
-using NuGet.Packaging.Core;
-using NuGet.Protocol.Core.Types;
-using NuGet.Versioning;
-using PluginManager.Extensions;
-using PluginManager.Logger;
-using PluginManager.PackageManager.Models;
-using PluginManager.PackageManager.NuGet;
-using PluginManager.PackageManager.NuGet.Project;
-using SourceRepositoryProvider = PluginManager.PackageManager.NuGet.SourceRepositoryProvider;
-
 namespace PluginManager.PackageManager
 {
-  /// <summary>A wrapper around <see cref="NuGetPackageManager" /> to simplify package management.</summary>
-  public class PluginPackageManager<TMeta> : IReadOnlyCollection<PluginPackage<TMeta>>
-  {
-    #region Properties & Fields - Non-Public
+  using System;
+  using System.Collections;
+  using System.Collections.Generic;
+  using System.Linq;
+  using System.Reflection;
+  using System.Threading;
+  using System.Threading.Tasks;
+  using Anotar.Custom;
+  using Extensions;
+  using global::Extensions.System.IO;
+  using global::NuGet.Configuration;
+  using global::NuGet.Frameworks;
+  using global::NuGet.PackageManagement;
+  using global::NuGet.Packaging.Core;
+  using global::NuGet.Protocol.Core.Types;
+  using global::NuGet.Versioning;
+  using Logger;
+  using Models;
+  using NuGet;
+  using NuGet.Project;
 
-    private readonly NuGetFramework                        _currentFramework;
-    private readonly PluginManagerLogger                   _logger = new PluginManagerLogger();
-    private readonly NuGetInstalledPluginRepository<TMeta> _pluginRepo;
-    private readonly NuGetPluginSolution<TMeta>            _solution;
-    private readonly SourceRepositoryProvider              _sourceRepositories;
+  /// <summary>A wrapper around <see cref="NuGetPackageManager" /> to simplify package management.</summary>
+  public sealed class PluginPackageManager<TMeta> : IReadOnlyCollection<PluginPackage<TMeta>>
+  {
+    #region Constructors
+
+    private PluginPackageManager(DirectoryPath                         pluginDirPath,
+                                 DirectoryPath                         pluginHomeDirPath,
+                                 DirectoryPath                         packageDirPath,
+                                 NuGetInstalledPluginRepository<TMeta> packageCache,
+                                 Func<ISettings, NuGet.SourceRepositoryProvider> providerCreator =
+                                   null)
+    {
+      var settings = Settings.LoadDefaultSettings(packageDirPath.FullPath, null, new NuGetMachineWideSettings());
+
+      _currentFramework  = GetCurrentFramework();
+      SourceRepositories = providerCreator?.Invoke(settings) ?? new NuGet.SourceRepositoryProvider(settings);
+      PluginRepo         = packageCache;
+      Solution = new NuGetPluginSolution<TMeta>(
+        pluginDirPath, pluginHomeDirPath, packageDirPath,
+        PluginRepo,
+        SourceRepositories,
+        settings,
+        _currentFramework
+      );
+    }
 
     #endregion
 
 
 
 
-    #region Constructors
+    #region Properties & Fields - Public
 
-    public PluginPackageManager(DirectoryPath                             pluginDirPath,
-                                DirectoryPath                             pluginHomeDirPath,
-                                DirectoryPath                             packageDirPath,
-                                FilePath                                  configFilePath,
-                                Func<ISettings, SourceRepositoryProvider> providerCreator = null)
-    {
-      pluginDirPath  = pluginDirPath.Collapse();
-      packageDirPath = packageDirPath.Collapse();
-
-      if (pluginDirPath.EnsureExists() == false)
-        throw new ArgumentException($"Root path {pluginDirPath.FullPath} doesn't exist and couldn't be created.");
-
-      if (packageDirPath.EnsureExists() == false)
-        throw new ArgumentException($"Package path {packageDirPath.FullPath} doesn't exist and couldn't be created.");
-
-      if (configFilePath.Directory.Exists() == false)
-        throw new ArgumentException($"Config file's directory {configFilePath.Directory.FullPath} doesn't exist and couldn't be created.");
-
-      var packageCacheTask = NuGetInstalledPluginRepository<TMeta>.LoadAsync(configFilePath, pluginHomeDirPath);
-      var settings         = Settings.LoadDefaultSettings(packageDirPath.FullPath, null, new NuGetMachineWideSettings());
-
-      _currentFramework   = GetCurrentFramework();
-      _sourceRepositories = providerCreator?.Invoke(settings) ?? new SourceRepositoryProvider(settings);
-      _pluginRepo         = packageCacheTask.Result;
-      _solution = new NuGetPluginSolution<TMeta>(
-        pluginDirPath, pluginHomeDirPath, packageDirPath,
-        _pluginRepo,
-        _sourceRepositories,
-        settings,
-        _currentFramework
-      );
-    }
+    public readonly NuGetFramework                        _currentFramework;
+    public readonly PluginManagerLogger                   _logger = new PluginManagerLogger();
+    public          NuGetInstalledPluginRepository<TMeta> PluginRepo         { get; }
+    public          NuGetPluginSolution<TMeta>            Solution           { get; }
+    public          NuGet.SourceRepositoryProvider        SourceRepositories { get; }
 
     #endregion
 
@@ -141,18 +129,54 @@ namespace PluginManager.PackageManager
 
     #region Methods
 
+    /// <summary>Instantiates a new package manager</summary>
+    /// <param name="pluginDirPath"></param>
+    /// <param name="pluginHomeDirPath"></param>
+    /// <param name="packageDirPath"></param>
+    /// <param name="configFilePath"></param>
+    /// <param name="providerCreator"></param>
+    /// <returns></returns>
+    public static async Task<PluginPackageManager<TMeta>> Create(
+      DirectoryPath                                   pluginDirPath,
+      DirectoryPath                                   pluginHomeDirPath,
+      DirectoryPath                                   packageDirPath,
+      FilePath                                        configFilePath,
+      Func<ISettings, NuGet.SourceRepositoryProvider> providerCreator = null)
+    {
+      pluginDirPath  = pluginDirPath.Collapse();
+      packageDirPath = packageDirPath.Collapse();
+
+      if (pluginDirPath.EnsureExists() == false)
+        throw new ArgumentException($"Root path {pluginDirPath.FullPath} doesn't exist and couldn't be created.");
+
+      if (packageDirPath.EnsureExists() == false)
+        throw new ArgumentException($"Package path {packageDirPath.FullPath} doesn't exist and couldn't be created.");
+
+      if (configFilePath.Directory.Exists() == false)
+        throw new ArgumentException($"Config file's directory {configFilePath.Directory.FullPath} doesn't exist and couldn't be created.");
+
+      var packageCache = await NuGetInstalledPluginRepository<TMeta>.LoadAsync(configFilePath, pluginHomeDirPath);
+
+      return new PluginPackageManager<TMeta>(
+        pluginDirPath,
+        pluginHomeDirPath,
+        packageDirPath,
+        packageCache,
+        providerCreator);
+    }
+
     /// <summary>
     ///   Adds the specified package source. Sources added this way will be searched before any
     ///   global sources.
     /// </summary>
     /// <param name="repository">The package source to add.</param>
-    public SourceRepository AddRepository(string repository) => _sourceRepositories.CreateRepository(repository);
-    
+    public SourceRepository AddRepository(string repository) => SourceRepositories.CreateRepository(repository);
+
     /// <summary>Saves the local plugin repository state to file</summary>
     /// <returns>Success of operation</returns>
     public Task<bool> SaveConfigAsync()
     {
-      return _pluginRepo.SaveAsync();
+      return PluginRepo.SaveAsync();
     }
 
     /// <summary>Gets all installed versions of package <paramref name="packageId" />, if any.</summary>
@@ -164,19 +188,19 @@ namespace PluginManager.PackageManager
     public IEnumerable<NuGetVersion> FindInstalledPluginVersions(string packageId,
                                                                  bool   verify = false)
     {
-      var pkgs = _pluginRepo.FindPackageById(packageId);
+      var pkgs = PluginRepo.FindPackageById(packageId);
 
       if (verify)
-        pkgs = pkgs.Where(p => _pluginRepo.IsPluginInstalled(p.Identity, _solution));
+        pkgs = pkgs.Where(p => PluginRepo.IsPluginInstalled(p.Identity, Solution));
 
       return pkgs.Select(p => p.Identity.Version);
     }
 
-    public LocalPluginPackage<TMeta> FindInstalledPluginById(string packageId) => _pluginRepo.FindPluginById(packageId);
+    public LocalPluginPackage<TMeta> FindInstalledPluginById(string packageId) => PluginRepo.FindPluginById(packageId);
 
-    public LocalPluginPackage<TMeta> GetInstalledPlugin(PackageIdentity identity) => _pluginRepo[identity];
+    public LocalPluginPackage<TMeta> GetInstalledPlugin(PackageIdentity identity) => PluginRepo[identity];
 
-    public IEnumerable<LocalPluginPackage<TMeta>> GetInstalledPlugins() => _pluginRepo.Plugins;
+    public IEnumerable<LocalPluginPackage<TMeta>> GetInstalledPlugins() => PluginRepo.Plugins;
 
     /// <summary>
     ///   Gets assemblies (.dll, .exe) file paths referenced in given
@@ -195,8 +219,8 @@ namespace PluginManager.PackageManager
                                                      out IEnumerable<FilePath> dependenciesAssemblies,
                                                      NuGetFramework            targetFramework = null)
     {
-      var project = _solution.GetPluginProject((string)packageIdentity.Id);
-      var plugin  = _pluginRepo[packageIdentity];
+      var project = Solution.GetPluginProject((string)packageIdentity.Id);
+      var plugin  = PluginRepo[packageIdentity];
 
       if (project == null || plugin == null)
         throw new ArgumentException($"No such plugin {packageIdentity.Id} {packageIdentity.Version.ToNormalizedString()}");
@@ -215,7 +239,7 @@ namespace PluginManager.PackageManager
       {
         LogTo.Trace($"Uninstall requested for plugin {pluginPkg.Id}");
 
-        return _solution.UninstallPluginAsync(
+        return Solution.UninstallPluginAsync(
           pluginPkg.Id,
           removeDependencies,
           forceRemove,
@@ -335,7 +359,7 @@ namespace PluginManager.PackageManager
         PackageIdentity packageIdentity = new PackageIdentity(packageId, version);
 
         // If plugin exact version already exists, abort
-        if (_pluginRepo.IsPluginInstalled(packageIdentity, _solution))
+        if (PluginRepo.IsPluginInstalled(packageIdentity, Solution))
         {
           LogTo.Information($"Plugin {packageId} is already installed with version {version.ToNormalizedString()}");
 
@@ -343,7 +367,7 @@ namespace PluginManager.PackageManager
         }
 
         // If plugin already exists in a different version, try to update it
-        if (_pluginRepo.FindPluginById(packageId) != null)
+        if (PluginRepo.FindPluginById(packageId) != null)
         {
           LogTo.Information("Plugin already exist with a different version. Redirecting to UpdateAsync.");
 
@@ -351,7 +375,7 @@ namespace PluginManager.PackageManager
         }
 
         // If plugin doesn't exist, go ahead and install it
-        return await _solution.InstallPluginAsync(
+        return await Solution.InstallPluginAsync(
           packageIdentity,
           metadata,
           allowPrereleaseVersions,
@@ -379,7 +403,10 @@ namespace PluginManager.PackageManager
     /// <param name="allowPrereleaseVersions">Whether to include pre-release versions</param>
     /// <param name="cancellationToken"></param>
     /// <returns>Success of operation</returns>
-    /// <exception cref="ArgumentException"><paramref name="pluginPackage" /> cannot be a development plugin</exception>
+    /// <exception cref="ArgumentException">
+    ///   <paramref name="pluginPackage" /> cannot be a development
+    ///   plugin
+    /// </exception>
     /// <exception cref="ArgumentException">Plugin <paramref name="pluginPackage" /> is not installed</exception>
     /// <exception cref="ArgumentNullException"></exception>
     public Task<bool> UpdateAsync(
@@ -437,7 +464,7 @@ namespace PluginManager.PackageManager
 
       LogTo.Trace($"Update requested for plugin {packageId} {pluginPackage.Version} -> {version.ToNormalizedString()}");
 
-      return await _solution.UpdatePluginAsync(
+      return await Solution.UpdatePluginAsync(
         packageId,
         version,
         allowPrereleaseVersions,
@@ -455,7 +482,7 @@ namespace PluginManager.PackageManager
         throw new ArgumentNullException(nameof(searchTerm));
 
       return Search(searchTerm,
-                    _sourceRepositories,
+                    SourceRepositories,
                     enablePreRelease,
                     getMetaFromPackageNameFunc,
                     filterSearchResultFunc,
@@ -499,15 +526,16 @@ namespace PluginManager.PackageManager
         throw new ArgumentNullException(nameof(repositories));
 
       var tasks = repositories.Select(
-        r => Search(searchTerm,
-                    r,
-                    enablePreRelease,
-                    getMetaFromPackageNameFunc,
-                    filterSearchResultFunc,
-                    cancellationToken)
+        r => SearchInternal(searchTerm,
+                            r,
+                            enablePreRelease,
+                            filterSearchResultFunc,
+                            cancellationToken)
       );
 
-      return (await Task.WhenAll(tasks)).SelectMany(a => a);
+      var onlinePkgs = (await Task.WhenAll(tasks)).SelectMany(a => a);
+
+      return await SearchInternalCreatePackages(onlinePkgs, getMetaFromPackageNameFunc);
     }
 
     public async Task<List<PluginPackage<TMeta>>> Search(
@@ -518,18 +546,28 @@ namespace PluginManager.PackageManager
       Func<IPackageSearchMetadata, bool> filterSearchResultFunc     = null,
       CancellationToken                  cancellationToken          = default)
     {
+      var onlinePkgs = await SearchInternal(
+        searchTerm,
+        sourceRepository,
+        enablePreRelease,
+        filterSearchResultFunc,
+        cancellationToken);
+
+      return await SearchInternalCreatePackages(onlinePkgs, getMetaFromPackageNameFunc);
+    }
+
+    private async Task<List<IPackageSearchMetadata>> SearchInternal(
+      string                             searchTerm,
+      SourceRepository                   sourceRepository,
+      bool                               enablePreRelease       = false,
+      Func<IPackageSearchMetadata, bool> filterSearchResultFunc = null,
+      CancellationToken                  cancellationToken      = default)
+    {
       if (searchTerm == null)
         throw new ArgumentNullException(nameof(searchTerm));
 
       if (sourceRepository == null)
         throw new ArgumentNullException(nameof(sourceRepository));
-
-      TMeta GetDefaultMeta(string _)
-      {
-        return default;
-      }
-
-      getMetaFromPackageNameFunc ??= GetDefaultMeta;
 
       var pkgSearchRes = await sourceRepository.GetResourceAsync<PackageSearchResource>(cancellationToken);
 
@@ -545,31 +583,58 @@ namespace PluginManager.PackageManager
         onlinePkgs = onlinePkgs.Where(filterSearchResultFunc)
                                .ToList();
 
+      return onlinePkgs;
+    }
+
+    private async Task<List<PluginPackage<TMeta>>> SearchInternalCreatePackages(
+      IEnumerable<IPackageSearchMetadata> onlinePkgs,
+      Func<string, TMeta>                 getMetaFromPackageNameFunc)
+    {
+      TMeta GetDefaultMeta(string _)
+      {
+        return default;
+      }
+
+      getMetaFromPackageNameFunc ??= GetDefaultMeta;
+
       // Fetch all available versions
       var pkgVersionDownloadTasks = onlinePkgs.ToDictionary(pkg => pkg, pkg => pkg.GetVersionsAsync());
 
       await Task.WhenAll(pkgVersionDownloadTasks.Values);
 
+      var onlinePkgVersions = pkgVersionDownloadTasks
+                              .GroupBy(kvp => kvp.Key.Identity.Id)
+                              .ToDictionary(g => g.First().Key,
+                                            g => g.Aggregate(
+                                              new List<VersionInfo>(),
+                                              (vList, kvp) =>
+                                              {
+                                                vList.AddRange(kvp.Value.Result);
+                                                return vList;
+                                              }
+                                            ));
+
       // Match local packages with online ones
       var localPkgs = GetInstalledPlugins().ToDictionary(k => k.Identity.Id);
 
-      PluginPackage<TMeta> CreatePackage(IPackageSearchMetadata sr)
+      PluginPackage<TMeta> CreatePackage(KeyValuePair<IPackageSearchMetadata, List<VersionInfo>> onlinePackage)
       {
-        var nuGetVersions =
-          pkgVersionDownloadTasks.SafeGet(sr)?.Result?.ToList()
-          ?? new List<VersionInfo> { new VersionInfo(sr.Identity.Version) };
+        var packageId = onlinePackage.Key.Identity.Id;
+        var packageVersions = onlinePackage.Value?.Any() ?? false
+          ? onlinePackage.Value
+          : new List<VersionInfo> { new VersionInfo(onlinePackage.Key.Identity.Version) };
 
-        if (!localPkgs.ContainsKey(sr.Identity.Id))
-          return new OnlinePluginPackage<TMeta>(sr.Identity.Id, getMetaFromPackageNameFunc(sr.Identity.Id), nuGetVersions);
+        if (localPkgs.ContainsKey(packageId) == false)
+          return new OnlinePluginPackage<TMeta>(packageId, getMetaFromPackageNameFunc(packageId), packageVersions);
 
-        var localPkg = localPkgs[sr.Identity.Id];
-        localPkg.SetOnlineVersions(nuGetVersions);
+        var localPkg = localPkgs[packageId];
+        localPkg.SetOnlineVersions(packageVersions);
 
         return localPkg;
       }
 
-      return onlinePkgs.Select(CreatePackage)
-                       .ToList();
+      return onlinePkgVersions.Select(CreatePackage)
+                              .ToList();
     }
 
     public Task<IEnumerable<NuGetVersion>> SearchMatchingVersion(
@@ -578,7 +643,7 @@ namespace PluginManager.PackageManager
       NuGetFramework    framework         = null,
       CancellationToken cancellationToken = default)
     {
-      return SearchMatchingVersion(_sourceRepositories, packageId, versionRange, framework, cancellationToken);
+      return SearchMatchingVersion(SourceRepositories, packageId, versionRange, framework, cancellationToken);
     }
 
     public Task<IEnumerable<NuGetVersion>> SearchMatchingVersion(
@@ -588,7 +653,7 @@ namespace PluginManager.PackageManager
       NuGetFramework            framework         = null,
       CancellationToken         cancellationToken = default)
     {
-      return SearchMatchingVersion((IEnumerable<SourceRepository>)provider.GetRepositories(), packageId, versionRange, framework,
+      return SearchMatchingVersion(provider.GetRepositories(), packageId, versionRange, framework,
                                    cancellationToken);
     }
 

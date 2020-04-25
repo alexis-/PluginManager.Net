@@ -133,7 +133,7 @@ namespace PluginManager.PackageManager.Models
     {
       LatestVersionDownloadCount = versions.Aggregate((vi1, vi2) => vi1.Version > vi2.Version ? vi1 : vi2)?.DownloadCount ?? 0;
       TotalDownloadCount         = versions.Sum(vi => vi.DownloadCount ?? 0);
-      OnlineVersions             = versions.Select(vi => vi.Version);
+      OnlineVersions             = versions.Select(vi => vi.Version).Distinct();
       SelectedVersion            = LatestOnlineVersion;
     }
     

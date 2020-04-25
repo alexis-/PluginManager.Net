@@ -39,6 +39,8 @@ using PluginManager.PackageManager.Models;
 
 namespace PluginManager
 {
+  using NuGet.Versioning;
+
   public abstract partial class PluginManagerBase<TParent, TPluginInstance, TMeta, ICustomPluginManager, ICore, IPlugin>
   {
     #region Methods Abs
@@ -67,6 +69,14 @@ namespace PluginManager
     /// </summary>
     /// <param name="pluginInstance">The plugin that will be started</param>
     public abstract string GetPluginHostTypeAssemblyName(TPluginInstance pluginInstance);
+
+    /// <summary>
+    ///   Gets the minimum version of the the Interop library that implements
+    ///   <see cref="IPluginBase" /> or <see cref="PluginBase{TPlugin,IPlugin,ICore}" />) to be loaded
+    ///   by PluginHost.exe
+    /// </summary>
+    /// <param name="pluginInstance">The plugin that will be started</param>
+    public abstract NuGetVersion GetPluginHostTypeAssemblyMinimumVersion(TPluginInstance pluginInstance);
 
     /// <summary>
     ///   Gets the namespace-prepended type name of the class which implements
