@@ -331,9 +331,10 @@ namespace PluginManager.PackageManager.NuGet.Project
 
         using (var sourceCacheContext = new SourceCacheContext())
           await pm.ExecuteNuGetProjectActionsAsync(this, actions, projectContext, sourceCacheContext, cancellationToken);
-      }); //.ConfigureAwait(true);
-
-      //Plugin.RaiseVersionChanged();
+      }).ConfigureAwait(false);
+      
+      foreach (var contentDir in Plugin.GetContentDirectoryPath(this, _currentFramework))
+        contentDir.CopyTo(_pluginHomeDirPath);
     }
 
     public NuGetPackageManager CreatePackageManager()
