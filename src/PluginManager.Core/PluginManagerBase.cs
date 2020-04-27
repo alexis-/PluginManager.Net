@@ -214,7 +214,7 @@ namespace PluginManager
         var plugins = AllPluginsInternal.Where(pi => pi.IsEnabled)
                                         .OrderBy(pi => pi.IsDevelopment)
                                         .DistinctBy(pi => pi.Package.Id);
-        var startTasks = plugins.Select(StartPlugin).ToList();
+        var startTasks = plugins.Select(p => StartPlugin(p)).ToList();
 
         var startTasksRes = await Task.WhenAll(startTasks);
 

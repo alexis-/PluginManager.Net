@@ -71,8 +71,9 @@ namespace PluginManager
     /// Start plugin <paramref name="pluginInstance"/>
     /// </summary>
     /// <param name="pluginInstance">The plugin to start</param>
+    /// <param name="attachDebugger">Whether to attach the debugger to the plugin host on start</param>
     /// <returns>Success of operation</returns>
-    public async Task<bool> StartPlugin(TPluginInstance pluginInstance)
+    public async Task<bool> StartPlugin(TPluginInstance pluginInstance, bool attachDebugger = false)
     {
       var pluginPackage = pluginInstance.Package;
       var packageName   = pluginPackage.Id;
@@ -173,16 +174,17 @@ namespace PluginManager
         // Build command line
         var cmdLineParams = new PluginHostParameters
         {
-          PackageRootFolder             = packageRootFolder,
+          PackageRootFolder                   = packageRootFolder,
           PluginAndDependenciesAssembliesPath = string.Join(";", pluginAndDependenciesAssembliesPath),
-          PluginHostTypeAssemblyName    = pluginHostTypeAssemblyName,
-          PluginHostTypeQualifiedName   = GetPluginHostTypeQualifiedName(pluginInstance),
-          PackageName                   = packageName,
-          HomePath                      = pluginPackage.HomeDir.FullPath,
-          SessionString                 = pluginInstance.Guid.ToString(),
-          ChannelName                   = IpcServerChannelName,
-          ManagerProcessId              = Process.GetCurrentProcess().Id,
-          IsDevelopment                 = pluginInstance.IsDevelopment,
+          PluginHostTypeAssemblyName          = pluginHostTypeAssemblyName,
+          PluginHostTypeQualifiedName         = GetPluginHostTypeQualifiedName(pluginInstance),
+          PackageName                         = packageName,
+          HomePath                            = pluginPackage.HomeDir.FullPath,
+          SessionString                       = pluginInstance.Guid.ToString(),
+          ChannelName                         = IpcServerChannelName,
+          ManagerProcessId                    = Process.GetCurrentProcess().Id,
+          IsDevelopment                       = pluginInstance.IsDevelopment,
+          AttachDebugger                      = attachDebugger
         };
 
         // Build process parameters

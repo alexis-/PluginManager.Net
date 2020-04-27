@@ -97,7 +97,7 @@ namespace PluginHost
     {
       Process pluginMgrProcess;
 
-      if (File.Exists(Path.Combine(args.HomePath, "debugger")))
+      if (args.AttachDebugger || File.Exists(Path.Combine(args.HomePath, "debugger")))
         Debugger.Launch();
 
       try

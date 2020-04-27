@@ -69,6 +69,9 @@ namespace PluginManager.PluginHost
     [Option('d', "development")]
     public bool IsDevelopment { get; set; }
 
+    [Option("attachDebugger")]
+    public bool AttachDebugger { get; set; }
+
     public Guid SessionGuid => Guid.Parse(SessionString);
 
     #endregion
