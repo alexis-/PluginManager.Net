@@ -21,7 +21,8 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/02/25 12:41
+// Created On:   2020/03/29 00:20
+// Modified On:  2020/10/25 08:25
 // Modified By:  Alexis
 
 #endregion
@@ -29,18 +30,17 @@
 
 
 
-using System;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Runtime.Remoting;
-using System.Runtime.Remoting.Channels.Ipc;
-using System.Threading.Tasks;
-using PluginManager.Interop.Contracts;
-using PluginManager.Interop.Extensions;
-using PluginManager.Interop.Sys;
-
 namespace PluginManager.Interop.Plugins
 {
+  using System;
+  using System.Collections.Concurrent;
+  using System.Runtime.Remoting;
+  using System.Runtime.Remoting.Channels.Ipc;
+  using System.Threading.Tasks;
+  using Contracts;
+  using Extensions;
+  using Sys;
+
   public abstract class PluginBase<TPlugin, IPlugin, ICore> : PerpetualMarshalByRefObject, IPluginBase
     where TPlugin : PluginBase<TPlugin, IPlugin, ICore>, IPlugin
     where IPlugin : class
@@ -116,7 +116,8 @@ namespace PluginManager.Interop.Plugins
     {
       return null;
     }
-
+    
+    /// <inheritdoc />
     public virtual void OnInjected()
     {
       if (SessionGuid == Guid.Empty)
@@ -128,7 +129,7 @@ namespace PluginManager.Interop.Plugins
       if (PluginMgr == null)
         throw new NullReferenceException($"{nameof(PluginMgr)} is null");
 
-      PluginInit();
+      OnPluginInitialized();
     }
 
     /// <inheritdoc />
@@ -150,6 +151,9 @@ namespace PluginManager.Interop.Plugins
 
     #region Methods
 
+    /// <summary>Requests the Interop service from another Plugin.</summary>
+    /// <typeparam name="IService">Interface for desired remote service.</typeparam>
+    /// <returns>Service or <see langword="null" /></returns>
     public virtual IService GetService<IService>()
       where IService : class
     {
@@ -186,6 +190,23 @@ namespace PluginManager.Interop.Plugins
       }
     }
 
+    /// <summary>Publishes a service for other Plugins to consume.</summary>
+    /// <typeparam name="IService">The interop interface for the service.</typeparam>
+    /// <typeparam name="TService">
+    ///   A type which <paramref name="service" /> can be cast to and which
+    ///   extends <see cref="PerpetualMarshalByRefObject" />. Typically the type implementing the
+    ///   service.
+    /// </typeparam>
+    /// <param name="service">An instance of the service.</param>
+    /// <param name="channelName">
+    ///   Optional user-defined channel name. If <see langword="null" />, a
+    ///   random channel name will be generated. Useful when the interface is intended to be shared
+    ///   with other applications.
+    /// </param>
+    /// <remarks>
+    ///   Only a single instance of the same interface <typeparamref name="IService" /> can be
+    ///   published at once.
+    /// </remarks>
     public virtual void PublishService<IService, TService>(TService service, string channelName = null)
       where IService : class
       where TService : PerpetualMarshalByRefObject, IService
@@ -213,12 +234,22 @@ namespace PluginManager.Interop.Plugins
       RegisteredServicesMap[svcTypeName] = (ipcServer, unregisterObj);
     }
 
+    /// <summary>
+    /// Revokes a service previously published through <see cref="PublishService{IService, TService}(TService, string)"/>.
+    /// </summary>
+    /// <typeparam name="IService">The interop interface for the service.</typeparam>
+    /// <returns>Whether the operation was successful</returns>
     public bool RevokeService<IService>()
       where IService : class
     {
       return RevokeService(typeof(IService));
     }
 
+    /// <summary>
+    /// Revokes a service previously published through <see cref="PublishService{IService, TService}(TService, string)"/>.
+    /// </summary>
+    /// <param name="svcType">Instance of the service published.</param>
+    /// <returns>Whether the operation was successful</returns>
     public bool RevokeService(Type svcType)
     {
       if (svcType.IsInterface == false)
@@ -240,6 +271,9 @@ namespace PluginManager.Interop.Plugins
       return true;
     }
 
+    /// <summary>
+    /// Revokes all services previously published through <see cref="PublishService{IService, TService}(TService, string)"/>.
+    /// </summary>
     public void RevokeServices()
     {
       foreach (var svcKeyValue in RegisteredServicesMap)
@@ -261,6 +295,15 @@ namespace PluginManager.Interop.Plugins
       }
     }
 
+    /// <summary>
+    ///   Called when the Plugin has been instantiated and the remote service is available.
+    ///   Override to run custom initialization code.
+    /// </summary>
+    protected virtual void OnPluginInitialized()
+    {
+      // Ignore
+    }
+
     #endregion
 
 
@@ -270,8 +313,6 @@ namespace PluginManager.Interop.Plugins
 
     protected abstract void LogInformation(string message);
     protected abstract void LogError(Exception    ex, string message);
-
-    protected abstract void PluginInit();
 
     /// <inheritdoc />
     public abstract string Name { get; }
