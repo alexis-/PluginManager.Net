@@ -617,6 +617,8 @@ namespace PluginManager.PackageManager
       // Match local packages with online ones
       var localPkgs = GetInstalledPlugins().ToDictionary(k => k.Identity.Id);
 
+      // TODO: Match Package version with Interop version (see PackageDependency)
+
       PluginPackage<TMeta> CreatePackage(KeyValuePair<IPackageSearchMetadata, List<VersionInfo>> onlinePackage)
       {
         var packageId = onlinePackage.Key.Identity.Id;

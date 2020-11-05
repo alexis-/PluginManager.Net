@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props')" />
+  <Import Project="..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.props" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.props')" />
   <Import Project="..\..\packages\GitLink.3.1.0\build\GitLink.props" Condition="Exists('..\..\packages\GitLink.3.1.0\build\GitLink.props')" />
   <Import Project="..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props" Condition="Exists('..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -61,8 +61,8 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CommandLine, Version=2.7.82.0, Culture=neutral, PublicKeyToken=5a870481e358d379, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\CommandLineParser.2.7.82\lib\net461\CommandLine.dll</HintPath>
+    <Reference Include="CommandLine, Version=2.8.0.0, Culture=neutral, PublicKeyToken=5a870481e358d379, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\CommandLineParser.2.8.0\lib\net461\CommandLine.dll</HintPath>
     </Reference>
     <Reference Include="Costura, Version=4.1.0.0, Culture=neutral, PublicKeyToken=9919ef960d84173d, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Costura.Fody.4.1.0\lib\net40\Costura.dll</HintPath>
@@ -142,13 +142,13 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Costura.Fody.4.1.0\build\Costura.Fody.props'))" />
-    <Error Condition="!Exists('..\..\packages\Fody.6.1.1\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Fody.6.1.1\build\Fody.targets'))" />
     <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.props'))" />
     <Error Condition="!Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\GitLink.3.1.0\build\GitLink.targets'))" />
-    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.props'))" />
-    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets'))" />
+    <Error Condition="!Exists('..\..\packages\Fody.6.3.0\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Fody.6.3.0\build\Fody.targets'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.props'))" />
+    <Error Condition="!Exists('..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.targets'))" />
   </Target>
-  <Import Project="..\..\packages\Fody.6.1.1\build\Fody.targets" Condition="Exists('..\..\packages\Fody.6.1.1\build\Fody.targets')" />
   <Import Project="..\..\packages\GitLink.3.1.0\build\GitLink.targets" Condition="Exists('..\..\packages\GitLink.3.1.0\build\GitLink.targets')" />
-  <Import Project="..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.60\build\MSBuild.Tools.targets')" />
+  <Import Project="..\..\packages\Fody.6.3.0\build\Fody.targets" Condition="Exists('..\..\packages\Fody.6.3.0\build\Fody.targets')" />
+  <Import Project="..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.targets" Condition="Exists('..\..\packages\MSBuild.Tools.0.2.61\build\MSBuild.Tools.targets')" />
 </Project>
