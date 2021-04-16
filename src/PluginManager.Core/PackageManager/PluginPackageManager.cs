@@ -46,6 +46,7 @@ namespace PluginManager.PackageManager
   using global::NuGet.Frameworks;
   using global::NuGet.PackageManagement;
   using global::NuGet.Packaging.Core;
+  using global::NuGet.Protocol;
   using global::NuGet.Protocol.Core.Types;
   using global::NuGet.Versioning;
   using Logger;
@@ -70,6 +71,11 @@ namespace PluginManager.PackageManager
       _currentFramework  = GetCurrentFramework();
       SourceRepositories = providerCreator?.Invoke(settings) ?? new NuGet.SourceRepositoryProvider(settings);
       PluginRepo         = packageCache;
+
+      var localRepo = SourceRepositories.CreateRepository(
+        new PackageSource(packageDirPath.FullPath, "Local", true),
+        FeedType.FileSystemPackagesConfig);
+
       Solution = new NuGetPluginSolution<TMeta>(
         pluginDirPath, pluginHomeDirPath, packageDirPath,
         PluginRepo,
@@ -171,6 +177,18 @@ namespace PluginManager.PackageManager
     /// </summary>
     /// <param name="repository">The package source to add.</param>
     public SourceRepository AddRepository(string repository) => SourceRepositories.CreateRepository(repository);
+
+    /// <summary>
+    /// Removes the specified package source.
+    /// </summary>
+    /// <param name="repositoryUri">The package source to remove.</param>
+    /// <returns>Whether the package source was found and removed or not.</returns>
+    public bool RemoveRepository(string repositoryUri)
+    {
+      var sr = SourceRepositories.Keys.FirstOrDefault(sr => sr.Name == repositoryUri);
+
+      return sr != null && SourceRepositories.TryRemove(sr, out _);
+    }
 
     /// <summary>Saves the local plugin repository state to file</summary>
     /// <returns>Success of operation</returns>

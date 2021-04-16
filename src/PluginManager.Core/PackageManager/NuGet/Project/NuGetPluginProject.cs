@@ -252,7 +252,10 @@ namespace PluginManager.PackageManager.NuGet.Project
       _pluginHomeDirPath.Create();
 
       ResolutionContext resolutionContext = new ResolutionContext(
-        DependencyBehavior.Lowest, allowPrereleaseVersions, false, VersionConstraints.None);
+        DependencyBehavior.Lowest,
+        allowPrereleaseVersions,
+        false,
+        VersionConstraints.None);
 
       await Task.Run(async () =>
       {
