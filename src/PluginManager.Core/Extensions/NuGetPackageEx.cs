@@ -71,11 +71,14 @@ namespace PluginManager.Extensions
       FolderNuGetProject project,
       NuGetFramework     targetFramework)
     {
+      if (pkg == null)
+        yield break;
+
       var pkgPath       = pkg.GetPackageDirectoryPath(project);
       var archiveReader = pkg.GetArchiveReader(project);
 
-      List<FrameworkSpecificGroup> referenceItems = archiveReader.GetReferenceItems().ToList();
-      FrameworkSpecificGroup       referenceGroup = SelectFrameworkMostCompatibleGroup(targetFramework, referenceItems);
+      var referenceItems = archiveReader.GetReferenceItems().ToList();
+      var referenceGroup = SelectFrameworkMostCompatibleGroup(targetFramework, referenceItems);
 
       if (referenceGroup != null)
       {
@@ -109,7 +112,10 @@ namespace PluginManager.Extensions
       FolderNuGetProject project,
       NuGetFramework     targetFramework)
     {
-      var pkgPath       = pkg.GetPackageDirectoryPath(project);
+      if (pkg == null)
+        yield break;
+
+      var pkgPath = pkg.GetPackageDirectoryPath(project);
 
       if (pkgPath == null)
         yield break;
