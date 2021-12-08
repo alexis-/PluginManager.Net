@@ -1,0 +1,3 @@
+[submodule "libs/ServiceWire"]
+	path = libs/ServiceWire
+	url = https://github.com/alexis-/ServiceWire.git

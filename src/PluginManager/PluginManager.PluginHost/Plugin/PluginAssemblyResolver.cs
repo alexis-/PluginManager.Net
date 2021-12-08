@@ -21,7 +21,8 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Modified On:  2020/03/05 15:06
+// Created On:   2021/03/25 11:38
+// Modified On:  2021/03/25 11:48
 // Modified By:  Alexis
 
 #endregion
@@ -29,58 +30,50 @@
 
 
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using PluginHost;
-
-namespace PluginManager.Interop.PluginHost
+namespace PluginHost.Plugin
 {
+  using System;
+  using System.Collections.Generic;
+  using System.IO;
+  using System.Linq;
+  using System.Reflection;
+
   /// <summary>
   ///   Implement the <see cref="AppDomain.AssemblyResolve" /> event to load the plugin's and
-  ///   its dependencies' assemblies. See <see cref="PluginAssemblyResolver(string, string)" />
+  ///   its dependencies' assemblies. See <see cref="Initialize(string, string)" />
   /// </summary>
-  [Serializable]
-  public class PluginAssemblyResolver
+  public sealed class PluginAssemblyResolver
   {
+    #region Constants & Statics
+
+    /// <summary>Global instance, prevents the GC from collecting the assembly resolver.</summary>
+    public static PluginAssemblyResolver Instance { get; private set; }
+
+    #endregion
+
+
+
+
+    #region Properties & Fields - Non-Public
+
+    /// <summary>A map between assembly name and the assembly file path</summary>
+    private readonly Dictionary<string, string> _assemblyNamePathMap;
+
+    #endregion
+
+
+
+
     #region Constructors
 
     /// <summary>
     ///   Implement the <see cref="AppDomain.AssemblyResolve" /> event to load the plugin's and
-    ///   its dependencies' assemblies as provided by
-    ///   <paramref name="pluginAndDependenciesAssembliesPath" />
+    ///   its dependencies' assemblies as provided by <paramref name="assemblyNamePathMap" />
     /// </summary>
-    /// <param name="packageRootFolder">
-    ///   The root folder underneath which all packages and their
-    ///   assemblies are located
-    /// </param>
-    /// <param name="pluginAndDependenciesAssembliesPath">
-    ///   The file path to plugin's and its
-    ///   dependencies' assemblies. Paths should be relative to <paramref name="packageRootFolder" />
-    /// </param>
-    public PluginAssemblyResolver(string packageRootFolder,
-                                  string pluginAndDependenciesAssembliesPath)
+    /// <param name="assemblyNamePathMap">A map of assembly names and their path on disk</param>
+    private PluginAssemblyResolver(Dictionary<string, string> assemblyNamePathMap)
     {
-      AssemblyNamePathMap = new Dictionary<string, string>();
-      var pluginAndDependenciesAssembliesPathArr = pluginAndDependenciesAssembliesPath.Split(
-        new[] { PluginHostConst.PluginAndDependenciesAssembliesSeparator },
-        StringSplitOptions.RemoveEmptyEntries);
-
-      foreach (var assemblyPath in pluginAndDependenciesAssembliesPathArr)
-      {
-        var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
-
-        if (string.IsNullOrWhiteSpace(assemblyName))
-        {
-          Console.Error.WriteLine(
-            $"PluginAssemblyResolver.Setup: Cannot find assembly file name iin assembly path {assemblyPath}. Skipping, this may affect the plugin's ability to run correctly");
-          continue;
-        }
-
-        AssemblyNamePathMap[assemblyName] = packageRootFolder + assemblyPath;
-      }
+      _assemblyNamePathMap = assemblyNamePathMap;
 
       AppDomain.CurrentDomain.AssemblyResolve += ResolvePluginOrDependencyAssembly;
     }
@@ -92,10 +85,7 @@ namespace PluginManager.Interop.PluginHost
 
     #region Properties & Fields - Public
 
-    /// <summary>
-    /// A map between assembly name and the assembly file path
-    /// </summary>
-    public Dictionary<string, string> AssemblyNamePathMap { get; }
+    public IReadOnlyDictionary<string, string> AssemblyNamePathMap => _assemblyNamePathMap;
 
     #endregion
 
@@ -104,7 +94,49 @@ namespace PluginManager.Interop.PluginHost
 
     #region Methods
 
-    private Assembly ResolvePluginOrDependencyAssembly(object sender, ResolveEventArgs e)
+    /// <summary>
+    ///   Creates a new instance of <see cref="PluginAssemblyResolver" /> which implements the
+    ///   <see cref="AppDomain.AssemblyResolve" /> event to load the plugin's and its dependencies'
+    ///   assemblies as provided by <paramref name="pluginAndDependenciesAssembliesPath" />
+    /// </summary>
+    /// <param name="packageRootFolder">
+    ///   The root folder underneath which all packages and their
+    ///   assemblies are located
+    /// </param>
+    /// <param name="pluginAndDependenciesAssembliesPath">
+    ///   The file path to plugin's and its
+    ///   dependencies' assemblies. Paths should be relative to <paramref name="packageRootFolder" />
+    /// </param>
+    public static void Initialize(string packageRootFolder,
+                                  string pluginAndDependenciesAssembliesPath)
+    {
+      if (Instance != null)
+        throw new InvalidOperationException("An instance of PluginAssemblyResolver already exists.");
+
+      var assemblyNamePathMap = new Dictionary<string, string>();
+
+      var pluginAndDependenciesAssembliesPathArr = pluginAndDependenciesAssembliesPath.Split(
+        new[] { PluginHostConst.PluginAndDependenciesAssembliesSeparator },
+        StringSplitOptions.RemoveEmptyEntries);
+
+      foreach (var assemblyPath in pluginAndDependenciesAssembliesPathArr)
+      {
+        var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
+
+        if (string.IsNullOrWhiteSpace(assemblyName))
+        {
+          Console.Error.WriteLine(
+            $"PluginAssemblyResolver.Setup: Cannot find assembly file name in assembly path {assemblyPath}. Skipping, this may affect the plugin's ability to run correctly");
+          continue;
+        }
+
+        assemblyNamePathMap[assemblyName] = packageRootFolder + assemblyPath;
+      }
+
+      Instance = new PluginAssemblyResolver(assemblyNamePathMap);
+    }
+
+    public Assembly ResolvePluginOrDependencyAssembly(object sender, ResolveEventArgs e)
     {
       var assemblyName = e.Name.Split(',').First();
 

@@ -3,24 +3,27 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29806.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginManager.Core", "src\PluginManager.Core\PluginManager.Core.csproj", "{78920D38-92CC-49B3-B82F-92AACC504A5B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PluginManager.Core", "src\PluginManager\PluginManager.Core\PluginManager.Core.csproj", "{78920D38-92CC-49B3-B82F-92AACC504A5B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginManager.Interop", "src\PluginManager.Interop\PluginManager.Interop.csproj", "{672B6686-C60D-4358-8EC2-A340E5319FF2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PluginManager.Interop", "src\PluginManager\PluginManager.Interop\PluginManager.Interop.csproj", "{672B6686-C60D-4358-8EC2-A340E5319FF2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginManager.PluginHost", "src\PluginManager.PluginHost\PluginManager.PluginHost.csproj", "{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PluginManager.PluginHost", "src\PluginManager\PluginManager.PluginHost\PluginManager.PluginHost.csproj", "{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "PluginManager.Shared", "src\PluginManager.Shared\PluginManager.Shared.shproj", "{234E6980-1C32-4C14-AEE0-282D002387E0}"
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "PluginManager.Shared", "src\PluginManager\PluginManager.Shared\PluginManager.Shared.shproj", "{234E6980-1C32-4C14-AEE0-282D002387E0}"
 EndProject
-Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "PluginManager.Shared.MgrHost", "src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.shproj", "{4FB8AEB7-3984-42B9-BFA6-90B64D448730}"
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "PluginManager.Shared.MgrHost", "src\PluginManager\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.shproj", "{4FB8AEB7-3984-42B9-BFA6-90B64D448730}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{B973D6C0-D3B6-4FD9-BF8F-93C50686B2CA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PluginManager", "PluginManager", "{67C21C0C-C167-42BF-A3D9-0A46CC6CE2F6}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{149c5a9b-0588-41b9-8f77-c5d17a1cdfbe}*SharedItemsImports = 4
-		src\PluginManager.Shared\PluginManager.Shared.projitems*{149c5a9b-0588-41b9-8f77-c5d17a1cdfbe}*SharedItemsImports = 4
-		src\PluginManager.Shared\PluginManager.Shared.projitems*{234e6980-1c32-4c14-aee0-282d002387e0}*SharedItemsImports = 13
-		src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{4fb8aeb7-3984-42b9-bfa6-90b64d448730}*SharedItemsImports = 13
-		src\PluginManager.Shared\PluginManager.Shared.projitems*{672b6686-c60d-4358-8ec2-a340e5319ff2}*SharedItemsImports = 4
-		src\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{78920d38-92cc-49b3-b82f-92aacc504a5b}*SharedItemsImports = 4
+		src\PluginManager\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{149c5a9b-0588-41b9-8f77-c5d17a1cdfbe}*SharedItemsImports = 5
+		src\PluginManager\PluginManager.Shared\PluginManager.Shared.projitems*{149c5a9b-0588-41b9-8f77-c5d17a1cdfbe}*SharedItemsImports = 5
+		src\PluginManager\PluginManager.Shared\PluginManager.Shared.projitems*{234e6980-1c32-4c14-aee0-282d002387e0}*SharedItemsImports = 13
+		src\PluginManager\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems*{4fb8aeb7-3984-42b9-bfa6-90b64d448730}*SharedItemsImports = 13
+		src\PluginManager\PluginManager.Shared\PluginManager.Shared.projitems*{672b6686-c60d-4358-8ec2-a340e5319ff2}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,18 +60,14 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{78920D38-92CC-49B3-B82F-92AACC504A5B} = {67C21C0C-C167-42BF-A3D9-0A46CC6CE2F6}
+		{672B6686-C60D-4358-8EC2-A340E5319FF2} = {67C21C0C-C167-42BF-A3D9-0A46CC6CE2F6}
+		{149C5A9B-0588-41B9-8F77-C5D17A1CDFBE} = {67C21C0C-C167-42BF-A3D9-0A46CC6CE2F6}
+		{234E6980-1C32-4C14-AEE0-282D002387E0} = {67C21C0C-C167-42BF-A3D9-0A46CC6CE2F6}
+		{4FB8AEB7-3984-42B9-BFA6-90B64D448730} = {67C21C0C-C167-42BF-A3D9-0A46CC6CE2F6}
+	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AB0B1F96-F16A-4A76-AC70-ED5D13D463D3}
-	EndGlobalSection
-	GlobalSection(AutomaticVersions) = postSolution
-		UpdateAssemblyVersion = True
-		UpdateAssemblyFileVersion = True
-		UpdateAssemblyInfoVersion = True
-		AssemblyVersionSettings = IncrementOnDemand.IncrementOnDemand.IncrementOnDemand.IncrementWithResetOnIncrease
-		AssemblyFileVersionSettings = IncrementOnDemand.IncrementOnDemand.IncrementOnDemand.IncrementWithResetOnIncrease
-		AssemblyInfoVersionSettings = IncrementOnDemand.IncrementOnDemand.IncrementOnDemand.IncrementWithResetOnIncrease
-		UpdatePackageVersion = False
-		AssemblyInfoVersionType = SettingsVersion
-		InheritWinAppVersionFrom = None
 	EndGlobalSection
 EndGlobal

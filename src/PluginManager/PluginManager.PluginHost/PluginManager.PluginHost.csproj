@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">  
+  <PropertyGroup>  
+    <OutputType>WinExe</OutputType>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <RootNamespace>PluginHost</RootNamespace>
+    <AssemblyName>PluginHost</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.8.0" />
+    <PackageReference Include="MSBuild.Tools" Version="0.2.61">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <Import Project="..\PluginManager.Shared.MgrHost\PluginManager.Shared.MgrHost.projitems" Label="Shared" />
+
+  <Import Project="..\PluginManager.Shared\PluginManager.Shared.projitems" Label="Shared" />
+</Project>  

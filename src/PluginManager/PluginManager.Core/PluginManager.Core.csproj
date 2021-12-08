@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">  
+  <PropertyGroup>  
+    <OutputType>Library</OutputType>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <RootNamespace>PluginManager</RootNamespace>
+    <AssemblyName>PluginManager.Core</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  
+
+  <ItemGroup>
+    <PackageReference Include="Extensions.System.IO" Version="0.1.1.1" />
+    <PackageReference Include="MSBuild.Tools" Version="0.2.61">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Nito.AsyncEx" Version="5.1.0" />
+    <PackageReference Include="ServiceWire" Version="5.3.4" />
+  </ItemGroup>
+  
+
+  <ItemGroup>
+    <ProjectReference Include="..\PluginManager.Interop\PluginManager.Interop.csproj" />
+  </ItemGroup>
+</Project>

@@ -6,7 +6,7 @@
 // copy of this software and associated documentation files (the "Software"),
 // to deal in the Software without restriction, including without limitation
 // the rights to use, copy, modify, merge, publish, distribute, sublicense,
-// and/or sell copies of the Software, and to permit persons to whom the 
+// and/or sell copies of the Software, and to permit persons to whom the
 // Software is furnished to do so, subject to the following conditions:
 // 
 // The above copyright notice and this permission notice shall be included in
@@ -21,8 +21,8 @@
 // DEALINGS IN THE SOFTWARE.
 // 
 // 
-// Created On:   2019/03/02 18:29
-// Modified On:  2019/03/02 22:06
+// Created On:   2021/03/24 15:56
+// Modified On:  2021/03/25 16:05
 // Modified By:  Alexis
 
 #endregion
@@ -30,28 +30,27 @@
 
 
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using PluginHost;
-using PluginManager.Interop.Contracts;
-using PluginManager.Interop.Extensions;
-using PluginManager.Interop.Sys;
-
 namespace PluginManager.Interop.PluginHost
 {
+  using System;
+  using System.Diagnostics;
+  using System.Threading;
+  using System.Threading.Tasks;
+  using Contracts;
+  using Extensions;
+  using global::PluginHost;
+  using Sys;
+
   /// <summary>
-  /// The plugin host is initialized the PluginHost.exe in its own AppDomain. This is equivalent to the Startup() function for plugins
+  ///   The plugin host is initialized the PluginHost.exe in its own AppDomain. This is
+  ///   equivalent to the Startup() function for plugins
   /// </summary>
   public abstract partial class PluginHostBase<ICore> : PerpetualMarshalByRefObject, IDisposable
   {
     #region Properties & Fields - Non-Public
 
     private readonly IPluginBase _plugin;
-
+    private readonly CancellationTokenSource _cts;
     private bool _hasExited;
 
     #endregion
@@ -61,21 +60,23 @@ namespace PluginManager.Interop.PluginHost
 
     #region Constructors
 
-    /// <summary>
-    /// Instantiates a new plugin
-    /// </summary>
+    /// <summary>Instantiates a new plugin</summary>
     /// <param name="pluginEntryAssemblyFilePath"></param>
     /// <param name="sessionGuid"></param>
     /// <param name="mgrChannelName"></param>
     /// <param name="mgrProcess"></param>
     /// <param name="isDev"></param>
+    /// <param name="cts"></param>
     protected PluginHostBase(
-      string  pluginEntryAssemblyFilePath,
-      Guid    sessionGuid,
-      string  mgrChannelName,
-      Process mgrProcess,
-      bool    isDev)
+      string                  pluginEntryAssemblyFilePath,
+      Guid                    sessionGuid,
+      string                  mgrChannelName,
+      Process                 mgrProcess,
+      bool                    isDev,
+      CancellationTokenSource cts)
     {
+      this._cts = cts;
+
       // Connect to Plugin Manager
       var pluginMgr = RemotingServicesEx.ConnectToIpcServer<IPluginManager<ICore>>(mgrChannelName);
 
@@ -123,6 +124,7 @@ namespace PluginManager.Interop.PluginHost
     public virtual void Dispose()
     {
       _plugin?.Dispose();
+      _cts.Cancel();
     }
 
     #endregion
@@ -132,6 +134,9 @@ namespace PluginManager.Interop.PluginHost
 
     #region Methods
 
+    /// <summary>Creates a new long-running task for <see cref="MonitorPluginMgrProcess(object)" />.</summary>
+    /// <param name="pluginMgrProc">The Plugin Manager process to monitor.</param>
+    /// <returns>Success</returns>
     protected virtual bool StartMonitoringPluginMgrProcess(Process pluginMgrProc)
     {
       if (pluginMgrProc.HasExited)
@@ -146,6 +151,11 @@ namespace PluginManager.Interop.PluginHost
       return true;
     }
 
+    /// <summary>
+    ///   Monitors the Plugin Manager process and shutdowns the loaded Plugin (current process)
+    ///   when the PM exits.
+    /// </summary>
+    /// <param name="param">The Plugin Manager <see cref="Process" />.</param>
     protected virtual void MonitorPluginMgrProcess(object param)
     {
       Process pluginMgrProc = (Process)param;
@@ -169,12 +179,14 @@ namespace PluginManager.Interop.PluginHost
       }
     }
 
+    /// <summary>Shuts down the loaded Plugin and exits the current process.</summary>
     protected virtual void OnPluginMgrStopped()
     {
       Dispose();
       Exit(PluginHostConst.ExitParentExited);
     }
 
+    /// <summary>Exit the current process.</summary>
     protected virtual void Exit(int code)
     {
       _hasExited = true;

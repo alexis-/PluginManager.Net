@@ -34,8 +34,6 @@ namespace PluginManager.Interop.Plugins
 {
   using System;
   using System.Collections.Concurrent;
-  using System.Runtime.Remoting;
-  using System.Runtime.Remoting.Channels.Ipc;
   using System.Threading.Tasks;
   using Contracts;
   using Extensions;
