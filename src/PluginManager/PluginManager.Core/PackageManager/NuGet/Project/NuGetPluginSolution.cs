@@ -47,17 +47,19 @@ using PluginManager.PackageManager.Models;
 
 namespace PluginManager.PackageManager.NuGet.Project
 {
+  using global::NuGet.Protocol.Core.Types;
+
   public class NuGetPluginSolution<TMeta> : ISolutionManager
   {
     #region Properties & Fields - Non-Public
 
-    private readonly NuGetFramework                                _currentFramework;
-    private readonly DirectoryPath                                 _packageDirPath;
-    private readonly DirectoryPath                                 _pluginHomeDirPath;
-    private readonly NuGetInstalledPluginRepository<TMeta>         _pluginRepo;
-    private readonly Dictionary<string, NuGetPluginProject<TMeta>> _projectMap;
-    private readonly ISettings                                     _settings;
-    private readonly SourceRepositoryProvider                      _sourceRepositories;
+    private readonly NuGetFramework                                                      _currentFramework;
+    private readonly DirectoryPath                                                       _packageDirPath;
+    private readonly DirectoryPath                                                       _pluginHomeDirPath;
+    private readonly NuGetInstalledPluginRepository<TMeta>                               _pluginRepo;
+    private readonly Dictionary<string, NuGetPluginProject<TMeta>>                       _projectMap;
+    private readonly ISettings                                                           _settings;
+    private readonly global::PluginManager.PackageManager.NuGet.SourceRepositoryProvider _sourceRepositories;
 
     #endregion
 
@@ -66,13 +68,13 @@ namespace PluginManager.PackageManager.NuGet.Project
 
     #region Constructors
 
-    public NuGetPluginSolution(DirectoryPath                         pluginDirPath,
-                               DirectoryPath                         pluginHomeDirPath,
-                               DirectoryPath                         packageDirPath,
-                               NuGetInstalledPluginRepository<TMeta> pluginRepo,
-                               SourceRepositoryProvider              sourceRepositories,
-                               ISettings                             settings,
-                               NuGetFramework                        currentFramework)
+    public NuGetPluginSolution(DirectoryPath                                                       pluginDirPath,
+                               DirectoryPath                                                       pluginHomeDirPath,
+                               DirectoryPath                                                       packageDirPath,
+                               NuGetInstalledPluginRepository<TMeta>                               pluginRepo,
+                               global::PluginManager.PackageManager.NuGet.SourceRepositoryProvider sourceRepositories,
+                               ISettings                                                           settings,
+                               NuGetFramework                                                      currentFramework)
     {
       SolutionDirectory   = pluginDirPath.Collapse().FullPath;
       NuGetProjectContext = new NuGetProjectContext(settings);
@@ -174,7 +176,7 @@ namespace PluginManager.PackageManager.NuGet.Project
         throw new ArgumentException($"Project {packageIdentity.Id} already exists");
 
       NuGetPluginProject<TMeta> project;
-
+      
       using (var pluginInstallSession = _pluginRepo.AddPlugin(packageIdentity, metadata))
       {
         project = new NuGetPluginProject<TMeta>(
@@ -188,16 +190,16 @@ namespace PluginManager.PackageManager.NuGet.Project
 
         await project.InstallPluginAsync(
           NuGetProjectContext,
-          _sourceRepositories.GetRepositories(),
+          _sourceRepositories.GetEnabledRepositories(),
           allowPrereleaseVersions,
-          cancellationToken);
+          cancellationToken).ConfigureAwait(false);
 
         pluginInstallSession.Success = true;
       }
 
       _projectMap[packageIdentity.Id] = project;
 
-      return await _pluginRepo.SaveAsync();
+      return await _pluginRepo.SaveAsync().ConfigureAwait(false);
     }
 
     public async Task<bool> UninstallPluginAsync(
@@ -250,7 +252,7 @@ namespace PluginManager.PackageManager.NuGet.Project
       {
         await project.UpdatePluginAsync(
           NuGetProjectContext,
-          _sourceRepositories.GetRepositories(),
+          _sourceRepositories.GetEnabledRepositories(),
           version,
           allowPrereleaseVersions,
           cancellationToken);

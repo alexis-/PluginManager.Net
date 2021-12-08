@@ -42,7 +42,6 @@ using PluginManager.Logger;
 
 namespace PluginManager.PackageManager.NuGet.Project
 {
-  /// <summary>Original from: https://github.com/Wyamio/Wyam/ Copyright (c) 2014 Dave Glick</summary>
   internal class NuGetProjectContext : INuGetProjectContext
   {
     #region Constructors
